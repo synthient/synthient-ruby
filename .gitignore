@@ -1,0 +1,7 @@
+.DS_Store
+*.gem
+*.parquet
+/pkg/
+/tmp/
+/vendor/
+/.bundle/
