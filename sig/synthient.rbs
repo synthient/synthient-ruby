@@ -1,0 +1,116 @@
+module Synthient
+  VERSION: String
+  DEFAULT_BASE_URL: String
+
+  class Error < StandardError
+  end
+
+  class ConnectionError < Error
+  end
+
+  class TimeoutError < ConnectionError
+  end
+
+  class DecodeError < Error
+  end
+
+  class APIError < Error
+    STATUS_TEXT: Hash[Integer, String]
+
+    attr_reader status: Integer
+    attr_reader type: String?
+    attr_reader title: String?
+    attr_reader detail: String?
+    attr_reader errors: Hash[String, Array[String]]
+    attr_reader request_id: String?
+    attr_reader retry_after: Numeric?
+
+    def initialize: (status: Integer, ?type: String?, ?title: String?, ?detail: String?,
+                     ?errors: Hash[String, Array[String]], ?request_id: String?, ?retry_after: Numeric?) -> void
+  end
+
+  class RateLimit < Data
+    attr_reader limit: Integer
+    attr_reader remaining: Integer
+    attr_reader reset: Integer
+
+    def self.new: (limit: Integer, remaining: Integer, reset: Integer) -> instance
+    def initialize: (limit: Integer, remaining: Integer, reset: Integer) -> void
+  end
+
+  class ResponseMetadata < Data
+    attr_reader status: Integer
+    attr_reader request_id: String?
+    attr_reader rate_limit: RateLimit?
+    attr_reader headers: Hash[String, String]
+
+    def self.new: (status: Integer, request_id: String?, rate_limit: RateLimit?, headers: Hash[String, String]) -> instance
+    def initialize: (status: Integer, request_id: String?, rate_limit: RateLimit?, headers: Hash[String, String]) -> void
+  end
+
+  interface _ResponseHook
+    def call: (ResponseMetadata metadata) -> untyped
+  end
+
+  class Client
+    MAX_BATCH_SIZE: Integer
+
+    attr_reader proxies: Feed[ProxyEvent]
+    attr_reader anonymizers: Feed[AnonymizerEvent]
+    attr_reader torrents: Feed[TorrentEvent]
+    attr_reader ja4t: Feed[JA4TEvent]
+    attr_reader helios_http: Feed[HeliosHTTPEvent]
+    attr_reader helios_https: Feed[HeliosHTTPSEvent]
+    attr_reader helios_dns: Feed[HeliosDNSEvent]
+    attr_reader helios_adb: Feed[HeliosADBEvent]
+
+    def initialize: (?api_key: String?, ?base_url: String, ?max_retries: Integer, ?timeout: Numeric,
+                     ?open_timeout: Numeric, ?user_agent: String?, ?response_hook: _ResponseHook?) -> void
+    def lookup_ip: (String | IPAddr ip) -> IPInfo
+    def lookup_ips: (Enumerable[String | IPAddr] ips) -> Array[IPInfo]
+    def lookup_domain: (String domain, ?limit: Integer?) -> DomainInfo
+    def account: () -> Account
+    def health: () -> nil
+    def close: () -> nil
+  end
+
+  class Feed[E]
+    type export_id = String | Date | Time
+
+    def stream: () { (E event) -> void } -> nil
+              | () -> Enumerator[E, nil]
+    def list_exports: (?limit: Integer?, ?cursor: String?) -> ExportPage
+    def each_export: (?limit: Integer?, ?cursor: String?) { (Export export) -> void } -> nil
+                   | (?limit: Integer?, ?cursor: String?) -> Enumerator[Export, nil]
+    def export_meta: (export_id export) -> ExportMeta
+    def download_url: (export_id export) -> URI::HTTP
+    def download: (export_id export) { (String chunk) -> void } -> nil
+                | (export_id export) -> Enumerator[String, nil]
+  end
+
+  module GRPCSchema
+    DEFAULT_ENDPOINT: String
+    MAX_MESSAGE_SIZE: Integer
+    EXPLANATIONS: Hash[Integer, String]
+
+    class Schema < Data
+      attr_reader endpoint: String
+      attr_reader symbols: Array[String]
+      attr_reader descriptor_set: untyped
+
+      def self.new: (endpoint: String, symbols: Array[String], descriptor_set: untyped) -> instance
+      def initialize: (endpoint: String, symbols: Array[String], descriptor_set: untyped) -> void
+    end
+
+    class SchemaError < Synthient::Error
+      attr_reader code: Integer?
+
+      def initialize: (?String? message, ?code: Integer?) -> void
+    end
+
+    def self.fetch: (?api_key: String?, ?endpoint: String, ?plaintext: bool, ?include_reflection: bool,
+                     ?symbols: Array[String], ?timeout: Numeric) -> Schema
+    def self.normalize_endpoint: (String? raw) -> [String, String]
+    def self.explain: (untyped error) -> String?
+  end
+end

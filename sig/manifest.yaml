@@ -1,0 +1,4 @@
+dependencies:
+  - name: date
+  - name: ipaddr
+  - name: uri
