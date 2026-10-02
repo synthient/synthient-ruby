@@ -42,6 +42,8 @@ jobs:
       fail-fast: false
       matrix:
         ruby: ["3.3", "4.0"]
+    env:
+      BUNDLE_WITH: grpc
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,5 +51,6 @@ jobs:
       - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
       - name: Check the built gem
         run: scripts/check-package.sh

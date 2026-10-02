@@ -3,10 +3,13 @@
 # plain Ruby consumer and a Bundler consumer running from an isolated
 # GEM_HOME outside the checkout, the grpcschema LoadError and the working
 # module once grpc is installed, and Steep against the installed signatures.
+# grpc and Steep come from the project bundle, so install it with the grpc
+# group first.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
+bundle_gems="$(ruby -rbundler -e 'print Bundler.bundle_path')"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -39,7 +42,7 @@ RUBY
 bundle install --local --quiet
 bundle exec ruby -e 'require "synthient"; puts "bundler consumer: ok"'
 
-gem install --no-document grpc google-protobuf steep
+export GEM_PATH="$GEM_PATH:$bundle_gems" PATH="$bundle_gems/bin:$PATH"
 ruby -e '
   require "synthient/grpcschema"
   abort "bad endpoint" unless Synthient::GRPCSchema.normalize_endpoint("example.com") == ["example.com:443", "example.com"]
