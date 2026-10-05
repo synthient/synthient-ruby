@@ -5,6 +5,8 @@ require_relative "test_helper"
 begin
   require "synthient/grpcschema"
 rescue LoadError => e
+  raise if ENV.key?("SYNTHIENT_REQUIRE_GRPC")
+
   warn "skipping grpcschema tests: #{e.message}"
 end
 
