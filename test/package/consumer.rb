@@ -13,4 +13,3 @@ info = client.lookup_ip("8.8.8.8")
 client.close
 server.close
 abort "unexpected risk score" unless info.intelligence.risk_score == 3
-puts "plain consumer: ok"

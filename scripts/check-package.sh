@@ -5,12 +5,12 @@
 # module once grpc is installed, and Steep against the installed signatures.
 set -euo pipefail
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(CDPATH='' cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-unset RUBYLIB RUBYOPT BUNDLE_GEMFILE BUNDLE_PATH BUNDLE_WITH BUNDLE_APP_CONFIG
+unset RUBYLIB RUBYOPT RUBYGEMS_GEMDEPS $(compgen -e | grep -E '^BUNDLER?_')
 export GEM_HOME="$work/gems" GEM_PATH="$work/gems" BUNDLE_USER_HOME="$work/bundle-home"
 export PATH="$GEM_HOME/bin:$PATH"
 
@@ -19,12 +19,13 @@ gem build --strict synthient.gemspec --output "$gem"
 
 diff <(gem spec "$gem" files | sed -n 's/^- //p' | sort) <(git ls-files lib sig README.md LICENSE | sort) ||
   { echo "the gem's files differ from the tracked lib, sig, README.md, and LICENSE"; exit 1; }
-gem spec "$gem" dependencies | grep -qx -- "--- \[\]" || { echo "the gem has runtime dependencies"; exit 1; }
+ruby -rrubygems/package -e 'deps = Gem::Package.new(ARGV[0]).spec.runtime_dependencies; abort "the gem has runtime dependencies: #{deps.join(", ")}" unless deps.empty?' "$gem"
 
 gem install --local --no-document "$gem"
 
 cd "$work"
 ruby "$root/test/package/consumer.rb"
+echo "plain consumer: ok"
 
 output="$(ruby -e 'require "synthient/grpcschema"' 2>&1 || true)"
 grep -q "gem install grpc google-protobuf" <<<"$output" || { echo "grpcschema did not explain its missing gems: $output"; exit 1; }
@@ -37,7 +38,8 @@ source "https://rubygems.org"
 gem "synthient"
 RUBY
 bundle install --local --quiet
-bundle exec ruby -e 'require "synthient"; puts "bundler consumer: ok"'
+bundle exec ruby "$root/test/package/consumer.rb"
+echo "bundler consumer: ok"
 
 gem install --no-document grpc google-protobuf steep
 ruby -e '
