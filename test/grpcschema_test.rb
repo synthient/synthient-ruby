@@ -151,6 +151,18 @@ class GRPCSchemaTest < SynthientTest
     assert_nil error.code
   end
 
+  def test_stream_ends_while_fetching_dependency
+    responses = [@reflection.descriptors("test/orphan.proto")].each
+    original = GRPC::ClientStub.instance_method(:bidi_streamer)
+    GRPC::ClientStub.define_method(:bidi_streamer) { |*_, **_| responses }
+    error = assert_raises(Synthient::GRPCSchema::SchemaError) { fetch(symbols: ["test.Orphan"]) }
+
+    assert_equal "reflection stream ended early", error.message
+    assert_nil error.code
+  ensure
+    GRPC::ClientStub.define_method(:bidi_streamer, original)
+  end
+
   def test_no_api_key_sends_no_metadata
     Synthient::GRPCSchema.fetch(api_key: " ", endpoint: "127.0.0.1:#{@port}", plaintext: true, symbols: ["test.Base"])
 

@@ -167,11 +167,8 @@ module Synthient
         end
       end
       symbols.each { |symbol| add_files.call(exchange.call(file_containing_symbol: symbol)) }
-      loop do
-        missing = files.each_value.flat_map { |file| file.dependency.to_a }.uniq.reject { |name| files.key?(name) }.sort
-        break if missing.empty?
-
-        missing.each do |name|
+      until (missing = files.each_value.flat_map { |file| file.dependency.to_a }.uniq - files.keys).empty?
+        missing.sort.each do |name|
           add_files.call(exchange.call(file_by_filename: name))
           raise SchemaError, "reflection did not return dependency #{name}" unless files.key?(name)
         end
