@@ -126,17 +126,20 @@ module Synthient
       credentials = plaintext ? :this_channel_is_insecure : GRPC::Core::ChannelCredentials.new
       channel = GRPC::Core::Channel.new(endpoint, { "grpc.max_receive_message_length" => MAX_MESSAGE_SIZE }, credentials)
       stub = GRPC::ClientStub.new(endpoint, credentials, channel_override: channel)
-      requests = Queue.new
+      deadline = Time.now + timeout
       metadata = api_key.to_s.strip.empty? ? {} : { "x-api-key" => api_key.strip }
-      responses = stub.bidi_streamer(
-        "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
-        Enumerator.new { |stream| while (request = requests.pop) do stream << request end },
-        MESSAGES["ServerReflectionRequest"].method(:encode), MESSAGES["ServerReflectionResponse"].method(:decode),
-        deadline: Time.now + timeout, metadata:
-      )
+      # Each request gets its own stream: grpc's client waits for the request
+      # stream to end before reporting the end of the response stream, so a
+      # shared open request stream hangs if the server ends the call early.
       exchange = lambda do |request|
-        requests << MESSAGES["ServerReflectionRequest"].new(host:, **request)
-        response = responses.next
+        response, = stub.bidi_streamer(
+          "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
+          [MESSAGES["ServerReflectionRequest"].new(host:, **request)],
+          MESSAGES["ServerReflectionRequest"].method(:encode), MESSAGES["ServerReflectionResponse"].method(:decode),
+          deadline:, metadata:
+        ).to_a
+        raise SchemaError, "reflection stream ended early" unless response
+
         error = response.error_response
         raise SchemaError.new(error.error_message, code: error.error_code) if error
 
@@ -189,10 +192,7 @@ module Synthient
       raise SchemaError.new(e.details, code: e.code)
     rescue Google::Protobuf::ParseError
       raise SchemaError, "reflection returned an invalid file descriptor"
-    rescue StopIteration
-      raise SchemaError, "reflection stream ended early"
     ensure
-      requests&.close
       channel&.close
     end
 

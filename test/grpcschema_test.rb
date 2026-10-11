@@ -46,10 +46,11 @@ class GRPCSchemaTest < SynthientTest
   end
 
   # A reflection service that answers from FILES, records the requests and
-  # metadata it sees, and can be slowed down.
+  # metadata it sees, and can be slowed down or made to stop answering after
+  # a number of requests.
   class FakeReflection < ReflectionService
     attr_reader :keys, :requests
-    attr_accessor :services, :delay
+    attr_accessor :services, :delay, :answers
 
     def initialize
       super
@@ -57,12 +58,15 @@ class GRPCSchemaTest < SynthientTest
       @requests = Queue.new
       @services = ["test.Greeter", "test.Orphan", "grpc.reflection.v1.ServerReflection", " "]
       @delay = 0
+      @answers = nil
     end
 
     def server_reflection_info(requests, call)
       @keys << call.metadata["x-api-key"]
       Enumerator.new do |responses|
         requests.each do |request|
+          break if @requests.size == @answers
+
           sleep @delay
           @requests << request
           responses << answer(request)
@@ -152,15 +156,11 @@ class GRPCSchemaTest < SynthientTest
   end
 
   def test_stream_ends_while_fetching_dependency
-    responses = [@reflection.descriptors("test/orphan.proto")].each
-    original = GRPC::ClientStub.instance_method(:bidi_streamer)
-    GRPC::ClientStub.define_method(:bidi_streamer) { |*_, **_| responses }
+    @reflection.answers = 1
     error = assert_raises(Synthient::GRPCSchema::SchemaError) { fetch(symbols: ["test.Orphan"]) }
 
     assert_equal "reflection stream ended early", error.message
     assert_nil error.code
-  ensure
-    GRPC::ClientStub.define_method(:bidi_streamer, original)
   end
 
   def test_no_api_key_sends_no_metadata
