@@ -77,7 +77,8 @@ class ResponseHookTest < SynthientTest
     hook = ->(_) { raise IOError, "hook failed" }
 
     assert_raises(IOError) { new_client(server, response_hook: hook).health }
-    assert_equal 1, server.requests.size
+    assert_raises(StopIteration) { new_client(server, response_hook: ->(_) { raise StopIteration }).health }
+    assert_equal 2, server.requests.size
   end
 
   def test_concurrent_requests_report_their_own_metadata

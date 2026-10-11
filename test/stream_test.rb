@@ -212,6 +212,7 @@ class StreamTest < SynthientTest
     server = serve { |_, socket| chunked(socket, ndjson(EVENTS[:proxies])) }
 
     assert_raises(IOError) { new_client(server).proxies.stream { raise IOError, "caller failure" } }
-    assert_equal 1, server.requests.size
+    assert_raises(StopIteration) { new_client(server).proxies.stream { raise StopIteration } }
+    assert_equal 2, server.requests.size
   end
 end

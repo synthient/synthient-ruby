@@ -118,7 +118,7 @@ module Synthient
     # MAX_REDIRECTS redirects are followed, and never from https to http.
     def download(uri, &block)
       redirects = 0
-      loop do
+      while redirects <= MAX_REDIRECTS
         session = nil
         response = nil
         next_uri = catch(REDIRECT) do
@@ -142,10 +142,11 @@ module Synthient
           discard(session)
         end
         raise Error, "export redirect downgrades to http" if uri.scheme == "https" && next_uri.scheme == "http"
-        raise Error, "too many export redirects" if (redirects += 1) > MAX_REDIRECTS
 
+        redirects += 1
         uri = next_uri
       end
+      raise Error, "too many export redirects"
     end
 
     # Closes idle connections. Requests after close raise IOError.
@@ -168,11 +169,9 @@ module Synthient
       raise IOError, "client is closed" if @closed
 
       uri = URI("#{@base_url}#{path}#{"?#{URI.encode_www_form(query.sort)}" unless query.nil? || query.empty?}")
-      attempt = 0
-      loop do
+      (0..@max_retries).each do |attempt|
         delay = catch(RETRY) { return attempt_request(uri, method, body, accept, policy, attempt, dedicated, &) }
         sleep(delay)
-        attempt += 1
       end
     end
 

@@ -68,12 +68,13 @@ module Synthient
 
       seen = Set.new
       seen << cursor unless cursor.nil? || cursor.empty?
-      loop do
+      page = list_exports(limit:, cursor:)
+      page.exports.each(&block)
+      until (cursor = page.next_cursor).nil? || cursor.empty?
+        raise Error, "export listing returned a repeated cursor" unless seen.add?(cursor)
+
         page = list_exports(limit:, cursor:)
         page.exports.each(&block)
-        cursor = page.next_cursor
-        break if cursor.nil? || cursor.empty?
-        raise Error, "export listing returned a repeated cursor" unless seen.add?(cursor)
       end
       nil
     end

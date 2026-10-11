@@ -147,6 +147,20 @@ class FeedTest < SynthientTest
     assert_equal 1, seen.size
   end
 
+  def test_each_export_block_exceptions_pass_through
+    server = serve { page([EXPORT, EXPORT], "c1") }
+    seen = []
+    assert_raises(StopIteration) do
+      new_client(server).proxies.each_export do |export|
+        seen << export
+        raise StopIteration if seen.size == 2
+      end
+    end
+
+    assert_equal 2, seen.size
+    assert_equal 1, server.requests.size
+  end
+
   def test_empty_cursor_ends_iteration
     server = serve { page([EXPORT], "") }
 

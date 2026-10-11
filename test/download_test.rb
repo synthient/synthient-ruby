@@ -171,6 +171,13 @@ class DownloadTest < SynthientTest
     assert_equal "", Timeout.timeout(5) { disconnected.pop }
   end
 
+  def test_block_exceptions_pass_through
+    store, origin = storage { [200, {}, PARQUET] }
+
+    assert_raises(StopIteration) { new_client(api("#{origin}/file")).proxies.download("latest") { raise StopIteration } }
+    assert_equal 1, store.requests.size
+  end
+
   def test_enumerator_form
     _, origin = storage { [200, {}, PARQUET] }
     chunks = new_client(api("#{origin}/file")).proxies.download("latest")
