@@ -5,7 +5,7 @@ require_relative "test_helper"
 # Checks the models and client against the OpenAPI spec the SDK was last
 # updated to, in .sdkgen/openapi.json.
 class ConformanceTest < SynthientTest
-  SPEC = JSON.parse(File.read(File.expand_path("../.sdkgen/openapi.json", __dir__)))
+  SPEC = JSON.parse(File.read(File.expand_path("../.sdkgen/openapi.json", __dir__), encoding: "UTF-8"))
   SCHEMAS = SPEC.dig("components", "schemas")
 
   MODELS = {
