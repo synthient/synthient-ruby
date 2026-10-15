@@ -67,16 +67,13 @@ module Synthient
       return enum_for(:each_export, limit:, cursor:) unless block
 
       seen = Set.new
-      seen << cursor unless cursor.nil? || cursor.empty?
-      page = list_exports(limit:, cursor:)
-      page.exports.each(&block)
-      until (cursor = page.next_cursor).nil? || cursor.empty?
-        raise Error, "export listing returned a repeated cursor" unless seen.add?(cursor)
-
+      while seen.add?(cursor)
         page = list_exports(limit:, cursor:)
         page.exports.each(&block)
+        cursor = page.next_cursor
+        return if cursor.nil? || cursor.empty?
       end
-      nil
+      raise Error, "export listing returned a repeated cursor"
     end
 
     # Returns an export's metadata, including its parquet schema.
