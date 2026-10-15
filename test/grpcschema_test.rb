@@ -227,7 +227,9 @@ class GRPCSchemaTest < SynthientTest
     assert_equal [5, "bad"], [error.error_code, error.error_message]
     assert_equal ["s"], Response.decode("\x32\x05\x0a\x03\x0a\x01s".b).list_services_response.service.map(&:name)
     assert_equal ["d"], Response.decode("\x22\x03\x0a\x01d".b).file_descriptor_response.file_descriptor_proto.to_a
-    assert_equal "v", Response.decode("\x0a\x01v".b).valid_host
+    response = Response.decode("\x0a\x01v\x12\x02\x3a\x00\x32\x05\x0a\x03\x0a\x01s".b)
+
+    assert_equal ["s"], response.list_services_response.service.map(&:name)
   end
 
   def test_no_global_reflection_constants

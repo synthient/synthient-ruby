@@ -55,11 +55,12 @@ module Synthient
 
     # The reflection v1 messages, built in a private descriptor pool so they
     # never clash with an application's own generated reflection classes.
+    # Only the fields the SDK uses are declared.
     # @api private
     MESSAGES = begin
       proto = Google::Protobuf
       field = lambda do |name, number, type, label: :LABEL_OPTIONAL, type_name: nil, oneof: nil|
-        proto::FieldDescriptorProto.new(name:, number:, type:, label:, oneof_index: oneof, json_name: name,
+        proto::FieldDescriptorProto.new(name:, number:, type:, label:, oneof_index: oneof,
                                         type_name: type_name && ".grpc.reflection.v1.#{type_name}")
       end
       file = proto::FileDescriptorProto.new(
@@ -77,8 +78,6 @@ module Synthient
           proto::DescriptorProto.new(
             name: "ServerReflectionResponse", oneof_decl: [proto::OneofDescriptorProto.new(name: "message_response")],
             field: [
-              field.call("valid_host", 1, :TYPE_STRING),
-              field.call("original_request", 2, :TYPE_MESSAGE, type_name: "ServerReflectionRequest"),
               field.call("file_descriptor_response", 4, :TYPE_MESSAGE, type_name: "FileDescriptorResponse", oneof: 0),
               field.call("list_services_response", 6, :TYPE_MESSAGE, type_name: "ListServiceResponse", oneof: 0),
               field.call("error_response", 7, :TYPE_MESSAGE, type_name: "ErrorResponse", oneof: 0)
