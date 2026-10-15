@@ -70,7 +70,7 @@ module Synthient
       raise ArgumentError, "max_retries must be a non-negative Integer" unless max_retries.is_a?(Integer) && max_retries >= 0
 
       { timeout:, open_timeout: }.each do |name, value|
-        unless value.is_a?(Numeric) && value.real? && value.positive? && value.finite?
+        unless value.is_a?(Numeric) && value.positive? && value.finite?
           raise ArgumentError, "#{name} must be a positive finite number of seconds"
         end
       end

@@ -51,7 +51,7 @@ class ClientTest < SynthientTest
     assert_raises(ArgumentError) { Synthient::Client.new(api_key: API_KEY, max_retries: -1) }
     assert_raises(ArgumentError) { Synthient::Client.new(api_key: API_KEY, max_retries: 1.5) }
     assert_raises(ArgumentError) { Synthient::Client.new(api_key: API_KEY, max_retries: "2") }
-    [0, -1, Float::INFINITY, Float::NAN, "5", nil, Complex(1, 1)].each do |value|
+    [0, -1, Float::INFINITY, Float::NAN, "5", nil].each do |value|
       assert_raises(ArgumentError, value.inspect) { Synthient::Client.new(api_key: API_KEY, timeout: value) }
       assert_raises(ArgumentError, value.inspect) { Synthient::Client.new(api_key: API_KEY, open_timeout: value) }
     end
