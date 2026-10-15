@@ -42,7 +42,7 @@ module Synthient
     # Creates a client. It makes no network requests.
     #
     # @param api_key [String] the API key, by default from SYNTHIENT_API_KEY
-    # @param base_url [String] the API base URL
+    # @param base_url [String]
     # @param max_retries [Integer] retries after the first attempt; 0 disables them
     # @param timeout [Numeric] seconds to wait for each read or write
     # @param open_timeout [Numeric] seconds to wait for a connection
