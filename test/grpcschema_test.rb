@@ -124,11 +124,11 @@ class GRPCSchemaTest < SynthientTest
     assert_equal "127.0.0.1", @reflection.requests.pop.host
   end
 
-  def test_include_reflection
+  def test_reflection_service_needs_a_symbol
     @reflection.services = ["grpc.reflection.v1.ServerReflection"]
 
     assert_raises(Synthient::GRPCSchema::SchemaError) { fetch }
-    error = assert_raises(Synthient::GRPCSchema::SchemaError) { fetch(include_reflection: true) }
+    error = assert_raises(Synthient::GRPCSchema::SchemaError) { fetch(symbols: ["grpc.reflection.v1.ServerReflection"]) }
 
     assert_equal 5, error.code
   end
@@ -200,10 +200,10 @@ class GRPCSchemaTest < SynthientTest
       "[::1]:50051" => ["[::1]:50051", "::1"],
       " 127.0.0.1:50051 " => ["127.0.0.1:50051", "127.0.0.1"]
     }.each do |raw, expected|
-      assert_equal expected, Synthient::GRPCSchema.normalize_endpoint(raw), raw.inspect
+      assert_equal expected, Synthient::GRPCSchema.send(:normalize_endpoint, raw), raw.inspect
     end
-    assert_raises(ArgumentError) { Synthient::GRPCSchema.normalize_endpoint("grpc://") }
-    assert_raises(ArgumentError) { Synthient::GRPCSchema.normalize_endpoint("grpc://bad host") }
+    assert_raises(ArgumentError) { Synthient::GRPCSchema.send(:normalize_endpoint, "grpc://") }
+    assert_raises(ArgumentError) { Synthient::GRPCSchema.send(:normalize_endpoint, "grpc://bad host") }
   end
 
   def test_explain

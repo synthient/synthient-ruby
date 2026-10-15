@@ -106,20 +106,20 @@ module Synthient
 
     # Fetches the protobuf files that define +symbols+, or every service the
     # server lists when +symbols+ is empty, along with all of their imports.
+    # Listing skips the grpc.reflection services; name one in +symbols+ to
+    # fetch it.
     #
     # @param api_key [String, nil] sent as x-api-key metadata unless blank;
     #   by default from SYNTHIENT_API_KEY
     # @param endpoint [String] host:port, a bare host (port 443 is assumed), or
     #   a grpc:// or https:// URL
     # @param plaintext [Boolean] disables TLS, for local development servers
-    # @param include_reflection [Boolean] includes the reflection service
-    #   itself when listing services
     # @param symbols [Array<String>] fully qualified service or message names
     # @param timeout [Numeric] seconds the whole fetch may take
     # @return [Schema]
     # @raise [SchemaError] with the gRPC status code when the server rejects a request
     def self.fetch(api_key: ENV.fetch("SYNTHIENT_API_KEY", nil), endpoint: DEFAULT_ENDPOINT, plaintext: false,
-                   include_reflection: false, symbols: [], timeout: 30)
+                   symbols: [], timeout: 30)
       raise ArgumentError, "timeout must be a positive number of seconds" unless timeout.is_a?(Numeric) && timeout.positive?
 
       endpoint, host = normalize_endpoint(endpoint)
@@ -151,9 +151,8 @@ module Synthient
         list = exchange.call(list_services: "").list_services_response
         raise SchemaError, "reflection response has no service list" unless list
 
-        symbols = list.service.map { |service| service.name.strip }.reject(&:empty?)
-        symbols = symbols.reject { |name| name.start_with?("grpc.reflection.") } unless include_reflection
-        symbols.sort!
+        symbols = list.service.map { |service| service.name.strip }
+        symbols = symbols.reject { |name| name.empty? || name.start_with?("grpc.reflection.") }.sort
       end
       raise SchemaError, "server lists no services" if symbols.empty?
 
@@ -221,6 +220,7 @@ module Synthient
     rescue URI::InvalidURIError
       raise ArgumentError, "invalid gRPC endpoint #{raw.inspect}"
     end
+    private_class_method :normalize_endpoint
 
     # Returns a human-readable explanation of a common fetch failure, or nil.
     #

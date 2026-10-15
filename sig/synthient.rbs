@@ -108,9 +108,8 @@ module Synthient
       def initialize: (?String? message, ?code: Integer?) -> void
     end
 
-    def self.fetch: (?api_key: String?, ?endpoint: String, ?plaintext: bool, ?include_reflection: bool,
-                     ?symbols: Array[String], ?timeout: Numeric) -> Schema
-    def self.normalize_endpoint: (String? raw) -> [String, String]
+    def self.fetch: (?api_key: String?, ?endpoint: String, ?plaintext: bool, ?symbols: Array[String],
+                     ?timeout: Numeric) -> Schema
     def self.explain: (untyped error) -> String?
   end
 end

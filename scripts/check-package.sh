@@ -44,7 +44,7 @@ echo "bundler consumer: ok"
 gem install --no-document grpc google-protobuf steep
 ruby -e '
   require "synthient/grpcschema"
-  abort "bad endpoint" unless Synthient::GRPCSchema.normalize_endpoint("example.com") == ["example.com:443", "example.com"]
+  abort "bad endpoint" unless Synthient::GRPCSchema::DEFAULT_ENDPOINT == "grpc.synthient.com:443"
   puts "grpcschema with grpc: ok"
 '
 
