@@ -5,7 +5,6 @@ module Synthient
   module DomainStatus
     ACTIVE = "active"
     INACTIVE = "inactive"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # The sentences that describe a domain's activity over the last 30 days.
@@ -15,7 +14,6 @@ module Synthient
     BUSINESS_HOURS = "Activity follows a weekday business-hours pattern."
     WEEKEND = "Activity follows a weekend pattern."
     BURST_DRIVEN = "Activity is burst-driven with significant peaks."
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # Aggregate event counts for a domain.
@@ -67,7 +65,7 @@ module Synthient
   # How a domain's events are spread over the day. +peak_hour+ and
   # +quiet_hour+ are UTC hours, and +cadence+ is one of Cadence.
   ActivityStats = Model.define do
-    required :cadence, :string, enum: Cadence
+    required :cadence, :string
     required :median_per_hour, :integer
     required :p95_per_hour, :integer
     required :peak_hour, :integer
@@ -89,7 +87,7 @@ module Synthient
   # UTC hourly counts.
   DomainInfo = Model.define do
     required :domain, :string
-    required :status, :string, enum: DomainStatus
+    required :status, :string
     required :stats, DomainStats
     required :unique_ips, UniqueIPs
     required :time_series, [TimeSeriesPoint]

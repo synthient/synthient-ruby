@@ -10,7 +10,7 @@ module Synthient
   #
   # @api private
   module Model
-    Field = Data.define(:name, :wire, :type, :required, :enum)
+    Field = Data.define(:name, :wire, :type, :required)
 
     # Collects the fields declared in a Model.define block.
     class Builder
@@ -20,12 +20,12 @@ module Synthient
         @fields = []
       end
 
-      def required(name, type, wire: name.to_s, enum: nil)
-        @fields << Field.new(name:, wire:, type:, required: true, enum:)
+      def required(name, type, wire: name.to_s)
+        @fields << Field.new(name:, wire:, type:, required: true)
       end
 
-      def optional(name, type, wire: name.to_s, enum: nil)
-        @fields << Field.new(name:, wire:, type:, required: false, enum:)
+      def optional(name, type, wire: name.to_s)
+        @fields << Field.new(name:, wire:, type:, required: false)
       end
     end
 

@@ -7,19 +7,16 @@ module Synthient
     EVENLY_DISTRIBUTED: String
     NO_ACTIVITY: String
     WEEKEND: String
-    ALL: Array[String]
   end
 
   module DomainStatus
     ACTIVE: String
     INACTIVE: String
-    ALL: Array[String]
   end
 
   module ExportKind
     DAILY: String
     HOURLY: String
-    ALL: Array[String]
   end
 
   module NetworkType
@@ -31,7 +28,6 @@ module Synthient
     MOBILE: String
     RESIDENTIAL: String
     SATELLITE: String
-    ALL: Array[String]
   end
 
   module OS
@@ -42,7 +38,6 @@ module Synthient
     LINUX: String
     MAC_OS_X: String
     WINDOWS: String
-    ALL: Array[String]
   end
 
   module ParquetType
@@ -52,7 +47,6 @@ module Synthient
     STRING: String
     UINT32: String
     UINT64: String
-    ALL: Array[String]
   end
 
   module ProxyType
@@ -77,14 +71,12 @@ module Synthient
     UPTIME_MONITOR: String
     WEBHOOK_PROVIDER: String
     WEB_ARCHIVER: String
-    ALL: Array[String]
   end
 
   module Relation
     ADMIN: String
     MEMBER: String
     OWNER: String
-    ALL: Array[String]
   end
 
   module Scope
@@ -110,7 +102,6 @@ module Synthient
     PROXY_FIREHOSE: String
     TORRENTS_FEED: String
     TORRENTS_STREAM: String
-    ALL: Array[String]
   end
 
   class ASNCount < Data

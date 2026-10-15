@@ -126,8 +126,5 @@ class ModelsTest < SynthientTest
     network = Synthient::Model.decode(Synthient::Network, { "asn" => 1, "isp" => "x", "type" => "SPACE_STATION" })
 
     assert_equal "SPACE_STATION", network.type
-    refute_includes Synthient::NetworkType::ALL, network.type
-    assert_includes Synthient::NetworkType::ALL, Synthient::NetworkType::MOBILE
-    assert_predicate Synthient::NetworkType::ALL, :frozen?
   end
 end

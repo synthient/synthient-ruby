@@ -24,14 +24,13 @@ module Synthient
     WEBHOOK_PROVIDER = "WEBHOOK_PROVIDER"
     PAYMENT_PROCESSOR = "PAYMENT_PROCESSOR"
     INTERNET_SCANNER = "INTERNET_SCANNER"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # A proxy sighting from the proxies feed. +type+ is one of ProxyType.
   ProxyEvent = Model.define do
     optional :ip, :string
     optional :provider, :string
-    optional :type, :string, enum: ProxyType
+    optional :type, :string
     optional :country_code, :string
     optional :asn, :integer
     optional :timestamp, :unix_time
@@ -43,7 +42,7 @@ module Synthient
     optional :range_start, :string
     optional :range_end, :string
     optional :provider, :string
-    optional :type, :string, enum: ProxyType
+    optional :type, :string
     optional :country_code, :string
     optional :asn, :integer
     optional :timestamp, :unix_time
@@ -83,7 +82,7 @@ module Synthient
     optional :ip, :string
     optional :ja4t, :string
     optional :provider, :string
-    optional :type, :string, enum: ProxyType
+    optional :type, :string
     optional :country_code, :string
     optional :asn, :integer
     optional :timestamp, :unix_time

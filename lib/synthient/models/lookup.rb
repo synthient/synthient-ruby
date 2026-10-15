@@ -11,7 +11,6 @@ module Synthient
     ACADEMIC = "ACADEMIC"
     DATACENTER = "DATACENTER"
     GOVERNMENT = "GOVERNMENT"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # Device operating systems. New values may be added.
@@ -23,7 +22,6 @@ module Synthient
     LINUX = "Linux"
     MAC_OS_X = "Mac OS X"
     WINDOWS = "Windows"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # The network that announces an address. +asn+ is 0 if the address is not
@@ -34,7 +32,7 @@ module Synthient
     required :isp, :string
     optional :org, :string
     optional :domain, :string
-    required :type, :string, enum: NetworkType
+    required :type, :string
     optional :abuse_email, :string
     optional :abuse_phone, :string
   end
@@ -61,7 +59,7 @@ module Synthient
 
   # A device type seen behind an address. +os+ is one of OS.
   Device = Model.define do
-    required :os, :string, enum: OS
+    required :os, :string
     required :version, :string
     required :last_seen, :unix_time
   end

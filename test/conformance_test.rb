@@ -57,6 +57,21 @@ class ConformanceTest < SynthientTest
     "ValidationProblemDetails" => "parsed into APIError"
   }.freeze
 
+  VALUE_SETS = {
+    "NetworkInfo.type" => Synthient::NetworkType,
+    "DeviceInfo.os" => Synthient::OS,
+    "DomainLookupResponse.status" => Synthient::DomainStatus,
+    "ActivityStatsBlock.cadence" => Synthient::Cadence,
+    "AccountInfoResponse.scopes" => Synthient::Scope,
+    "Organization.relation" => Synthient::Relation,
+    "ExportListItem.kind" => Synthient::ExportKind,
+    "ExportMetaResponse.kind" => Synthient::ExportKind,
+    "ProjectedColumn.type" => Synthient::ParquetType,
+    "ProxyStreamEntry.type" => Synthient::ProxyType,
+    "AnonymizerStreamEntry.type" => Synthient::ProxyType,
+    "JA4TStreamEntry.type" => Synthient::ProxyType
+  }.freeze
+
   UNIX_TIME_FIELDS = %w[timestamp last_seen created_at date].freeze
 
   def test_every_schema_is_accounted_for
@@ -64,7 +79,14 @@ class ConformanceTest < SynthientTest
   end
 
   def test_models_match_schemas
+    @enums = {}
     MODELS.each { |name, model| check_model(name, SCHEMAS.fetch(name), model) }
+
+    assert_empty @enums.keys - VALUE_SETS.keys, "spec enums without a value set"
+    assert_empty VALUE_SETS.keys - @enums.keys, "value sets without a spec enum"
+    VALUE_SETS.each do |where, set|
+      assert_equal @enums[where], set.constants.map { |name| set.const_get(name) }.sort, "#{where} enum values"
+    end
   end
 
   def test_members_do_not_shadow_data_methods
@@ -122,7 +144,8 @@ class ConformanceTest < SynthientTest
       assert_equal required.include?(wire), field.required, "#{where} required"
       refute field.required && property["nullable"], "#{where} is nullable, so it must be optional"
       check_type(where, property, field.type)
-      check_enum(where, property, field)
+      values = %w[enum x-extensible-enum].sum([]) { |key| property[key] || property.dig("items", key) || [] }
+      @enums[where] = values.sort if values.size >= 2
     end
   end
 
@@ -156,18 +179,6 @@ class ConformanceTest < SynthientTest
       end
     else
       flunk "#{where} has unsupported type #{property["type"].inspect}"
-    end
-  end
-
-  def check_enum(where, property, field)
-    values = %w[enum x-extensible-enum].sum([]) do |key|
-      property[key] || property.dig("items", key) || []
-    end
-    if values.size >= 2
-      refute_nil field.enum, "#{where} needs an enum module"
-      assert_equal values.sort, field.enum::ALL.sort, "#{where} enum values"
-    else
-      assert_nil field.enum, "#{where} has no enum in the spec"
     end
   end
 end

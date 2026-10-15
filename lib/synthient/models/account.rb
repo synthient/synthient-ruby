@@ -6,7 +6,6 @@ module Synthient
     OWNER = "OWNER"
     ADMIN = "ADMIN"
     MEMBER = "MEMBER"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # API key scopes. New values may be added.
@@ -33,14 +32,13 @@ module Synthient
     JA4T_FEED = "JA4T_FEED"
     JA4T_STREAM = "JA4T_STREAM"
     ADMIN_PROXIES = "ADMIN_PROXIES"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # The organization an account belongs to. +relation+ is one of Relation.
   Organization = Model.define do
     required :id, :string
     required :name, :string
-    required :relation, :string, enum: Relation
+    required :relation, :string
   end
 
   # The account's lookup credits. +resets_in+ is the number of seconds until
@@ -63,7 +61,7 @@ module Synthient
     required :first_name, :string
     required :last_name, :string
     required :organization, Organization
-    required :scopes, [:string], enum: Scope
+    required :scopes, [:string]
     required :lookup_quota, LookupQuota
     optional :api_key, AccountAPIKey
   end

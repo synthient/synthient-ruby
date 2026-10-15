@@ -5,7 +5,6 @@ module Synthient
   module ExportKind
     HOURLY = "hourly"
     DAILY = "daily"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # Parquet column types. New values may be added.
@@ -16,7 +15,6 @@ module Synthient
     UINT64 = "uint64"
     BOOL = "bool"
     BYTES = "bytes"
-    ALL = constants.sort.map { |name| const_get(name) }.freeze
   end
 
   # A parquet export of a feed. +id+ can be passed to the Feed methods as it
@@ -24,7 +22,7 @@ module Synthient
   # file. +download_path+ includes the /api/v4 prefix.
   Export = Model.define do
     required :id, :string
-    required :kind, :string, enum: ExportKind
+    required :kind, :string
     required :date, :date
     optional :hour, :integer
     required :size_bytes, :integer
@@ -44,7 +42,7 @@ module Synthient
   # A parquet column. +type+ is one of ParquetType.
   ParquetColumn = Model.define do
     required :name, :string
-    required :type, :string, enum: ParquetType
+    required :type, :string
   end
 
   # The columns of a parquet export.
@@ -57,7 +55,7 @@ module Synthient
   ExportMeta = Model.define do
     required :id, :string
     required :stream, :string
-    required :kind, :string, enum: ExportKind
+    required :kind, :string
     required :format, :string
     required :date, :unix_time
     optional :hour, :integer
