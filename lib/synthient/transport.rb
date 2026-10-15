@@ -19,8 +19,7 @@ module Synthient
     MAX_REDIRECTS = 10
     RETRY_STATUSES = %w[500 502 503 504].freeze
     RETRY = Object.new.freeze
-    REDIRECT = Object.new.freeze
-    private_constant :RETRY, :REDIRECT
+    private_constant :RETRY
     TRANSPORT_ERRORS = [
       IOError, SystemCallError, SocketError, Timeout::Error, OpenSSL::SSL::SSLError,
       Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError
@@ -121,19 +120,20 @@ module Synthient
       while redirects <= MAX_REDIRECTS
         session = nil
         response = nil
-        next_uri = catch(REDIRECT) do
+        next_uri = nil
+        begin
           session = start_session(uri)
           request = Net::HTTP::Get.new(uri, "User-Agent" => @user_agent, "Accept-Encoding" => "identity")
           session.request(request) do |res|
             response = res
             if res.is_a?(Net::HTTPRedirection)
-              throw REDIRECT, resolve_location(res) || raise(Error, "export redirect has no valid location")
+              next_uri = resolve_location(res) || raise(Error, "export redirect has no valid location")
+              break
             end
             raise_api_error(res) unless res.code == "200"
 
             read_body(res, &block)
           end
-          return
         rescue *TRANSPORT_ERRORS => e
           raise unless response.nil?
 
@@ -141,6 +141,7 @@ module Synthient
         ensure
           discard(session)
         end
+        return unless next_uri
         raise Error, "export redirect downgrades to http" if uri.scheme == "https" && next_uri.scheme == "http"
 
         redirects += 1
