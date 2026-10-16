@@ -5,9 +5,10 @@ module Synthient
   #
   # Net::HTTP's own retry is disabled on every session, so a stale keep-alive
   # connection never replays a billed lookup. Retries happen only here, under
-  # one of two policies: :transient retries rate limits, 5xx responses, and
-  # failures before a response arrives; :rate_limit retries only a 429 that
-  # carries Retry-After, which the API sends before doing any billed work.
+  # one of two policies: :transient retries a 429 that carries Retry-After,
+  # 500, 502, 503, and 504 responses, and failures other than TLS errors
+  # before a response arrives; :rate_limit retries only a 429 that carries
+  # Retry-After, which the API sends before doing any billed work.
   #
   # @api private
   class Transport
@@ -113,8 +114,9 @@ module Synthient
     end
 
     # Downloads a presigned export URL from storage and yields its bytes as
-    # stored. Only a User-Agent header is sent: never the API key. Up to
-    # MAX_REDIRECTS redirects are followed, and never from https to http.
+    # stored. It sends User-Agent and Accept-Encoding: identity, never the API
+    # key. Up to MAX_REDIRECTS redirects are followed, and never from https to
+    # http.
     def download(uri, &block)
       redirects = 0
       while redirects <= MAX_REDIRECTS

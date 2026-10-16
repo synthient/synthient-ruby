@@ -10,10 +10,10 @@ module Synthient
   # Lookups are billed and are never resent after a network failure, because
   # the API may already have done the work. They are retried only when the API
   # answers 429 with a Retry-After header, which it does before any work.
-  # Free requests are also retried on 5xx responses and network failures
-  # before a response arrives. Retries wait with jittered exponential backoff,
-  # or as long as Retry-After asks, and stop when Retry-After exceeds 60
-  # seconds.
+  # Account and feed requests are also retried on 500, 502, 503, and 504
+  # responses and on network failures other than TLS errors before a response
+  # arrives. Retries wait with jittered exponential backoff, or as long as
+  # Retry-After asks, and stop when Retry-After exceeds 60 seconds.
   #
   # @example
   #   client = Synthient::Client.new # reads SYNTHIENT_API_KEY
@@ -102,9 +102,10 @@ module Synthient
     end
 
     # Looks up to 1000 addresses in one request. The API drops duplicate,
-    # private, and invalid addresses, so match results by +ip+, not position.
-    # Costs ceil(n * 0.9) credits for n distinct usable addresses, and nothing
-    # if the request fails. An empty list returns [] without a request.
+    # private, and reserved addresses, so match results by +ip+, not position.
+    # An invalid address raises ArgumentError before the request. Costs
+    # ceil(n * 0.9) credits for n distinct usable addresses, and nothing if the
+    # request fails. An empty list returns [] without a request.
     #
     # @param ips [Enumerable<String, IPAddr>]
     # @return [Array<IPInfo>]
