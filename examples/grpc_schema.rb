@@ -12,7 +12,7 @@ begin
   schema = Synthient::GRPCSchema.fetch
 rescue Synthient::GRPCSchema::SchemaError => e
   explanation = Synthient::GRPCSchema.explain(e)
-  abort explanation ? "#{explanation}: #{e.message}" : e.message
+  abort explanation ? "#{explanation} #{e.message}" : e.message
 end
 
 puts "endpoint: #{schema.endpoint}"
