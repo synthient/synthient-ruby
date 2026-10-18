@@ -21,9 +21,10 @@ module Synthient
     RETRY_STATUSES = %w[500 502 503 504].freeze
     RETRY = Object.new.freeze
     private_constant :RETRY
+    # Net::ProtocolError is what Net::HTTP raises when a proxy refuses CONNECT.
     TRANSPORT_ERRORS = [
       IOError, SystemCallError, SocketError, Timeout::Error, OpenSSL::SSL::SSLError,
-      Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError
+      Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError
     ].freeze
 
     # Parses a Retry-After value into seconds: delta seconds clamped to
