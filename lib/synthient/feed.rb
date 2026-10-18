@@ -27,7 +27,7 @@ module Synthient
     # feed's stream scope, such as PROXY_FIREHOSE.
     #
     # There is no resume: events sent while disconnected are missed. The
-    # server ends each stream after about 30 minutes, and the call then
+    # server ends each stream after up to 30 minutes, and the call then
     # returns normally, so reconnect in a loop. Breaking out of the block
     # closes the connection. Without a block, returns an Enumerator that opens
     # the connection when iterated.
