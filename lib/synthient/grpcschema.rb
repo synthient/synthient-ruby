@@ -127,9 +127,8 @@ module Synthient
       stub = GRPC::ClientStub.new(endpoint, credentials, channel_override: channel)
       deadline = Time.now + timeout
       metadata = api_key.to_s.strip.empty? ? {} : { "x-api-key" => api_key.strip }
-      # Each request gets its own stream: grpc's client waits for the request
-      # stream to end before reporting the end of the response stream, so a
-      # shared open request stream hangs if the server ends the call early.
+      # Each request gets its own stream, because a shared open request stream
+      # hangs grpc's client if the server ends the call early.
       exchange = lambda do |request|
         response, = stub.bidi_streamer(
           "/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",

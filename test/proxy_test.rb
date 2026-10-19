@@ -8,7 +8,7 @@ class ProxyTest < SynthientTest
   API_URL = "https://api.synthient.invalid/api/v4"
 
   # Routes Net::HTTP through +proxy+ with http_proxy, which it also uses for
-  # HTTPS, and restores every proxy variable afterwards.
+  # HTTPS.
   def with_proxy(proxy)
     saved = PROXY_VARIABLES.to_h { |name| [name, ENV.fetch(name, nil)] }
     begin

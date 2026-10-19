@@ -4,11 +4,10 @@ module Synthient
   # Sends requests to the API and to export storage over Net::HTTP.
   #
   # Net::HTTP's own retry is disabled on every session, so a stale keep-alive
-  # connection never replays a billed lookup. Retries happen only here, under
-  # one of two policies: :transient retries a 429 that carries Retry-After,
-  # 500, 502, 503, and 504 responses, and failures other than TLS errors
-  # before a response arrives; :rate_limit retries only a 429 that carries
-  # Retry-After, which the API sends before doing any billed work.
+  # connection never replays a billed lookup. Retries happen only here:
+  # :rate_limit retries a 429 that carries Retry-After, and :transient also
+  # retries RETRY_STATUSES and failures other than TLS errors before a
+  # response arrives.
   #
   # @api private
   class Transport
@@ -27,9 +26,8 @@ module Synthient
       Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError
     ].freeze
 
-    # Parses a Retry-After value into seconds: delta seconds clamped to
-    # [0, 2**31], or an HTTP date, where a past date is 0. Returns nil when
-    # the value is absent or invalid.
+    # Parses a Retry-After value, in delta seconds or as an HTTP date, into
+    # seconds. Returns nil when the value is absent or invalid.
     def self.parse_retry_after(value)
       value = value.to_s.strip
       return nil if value.empty?
@@ -153,7 +151,6 @@ module Synthient
       raise Error, "too many export redirects"
     end
 
-    # Closes idle connections. Requests after close raise IOError.
     def close
       sessions = @mutex.synchronize do
         @closed = true

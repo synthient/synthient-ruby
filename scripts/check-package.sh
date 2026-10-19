@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Builds the gem and checks what consumers receive: the packaged files, a
-# plain Ruby consumer and a Bundler consumer running from an isolated
-# GEM_HOME outside the checkout, the grpcschema LoadError and the working
-# module once grpc is installed, and Steep against the installed signatures.
+# Builds the gem and checks what consumers receive, from an isolated
+# GEM_HOME outside the checkout.
 set -euo pipefail
 
 root="$(CDPATH='' cd "$(dirname "$0")/.." && pwd)"

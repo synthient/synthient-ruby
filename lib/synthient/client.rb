@@ -126,7 +126,7 @@ module Synthient
     end
 
     # Looks up the honeypot traffic Synthient has observed for a domain. Costs
-    # one lookup credit. A domain that was never observed is +inactive+.
+    # one lookup credit.
     #
     # @param domain [String]
     # @param limit [Integer, nil] how many recent events to return, 1 to 1000; the API default is 50

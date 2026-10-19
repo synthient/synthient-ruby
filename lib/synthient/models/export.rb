@@ -17,9 +17,9 @@ module Synthient
     BYTES = "bytes"
   end
 
-  # A parquet export of a feed. +id+ can be passed to the Feed methods as it
-  # is. +hour+ is nil for a daily export. +checksum+ is the hex SHA-256 of the
-  # file. +download_path+ includes the /api/v4 prefix.
+  # A parquet export of a feed. +hour+ is nil for a daily export. +checksum+
+  # is the hex SHA-256 of the file. +download_path+ includes the /api/v4
+  # prefix.
   Export = Model.define do
     required :id, :string
     required :kind, :string
