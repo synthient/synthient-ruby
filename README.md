@@ -60,7 +60,7 @@ gem install synthient
 
 ### gRPC schema fetcher
 
-The [gRPC schema fetcher](#grpc-schema) is part of the gem, but it needs the `grpc` and `google-protobuf` gems, which `synthient` does not depend on. Add them to use it:
+The [gRPC schema fetcher](#grpc-schema) is part of the gem but needs the `grpc` and `google-protobuf` gems:
 
 ```sh
 bundle add grpc google-protobuf
@@ -68,17 +68,19 @@ bundle add grpc google-protobuf
 
 ## Requirements
 
-Ruby 3.3 or later. The gem has no runtime dependencies outside Ruby's standard library. It ships RBS signatures, so [Steep](https://github.com/soutaro/steep) can check your calls once your Steepfile declares `library "synthient"`.
+Ruby 3.3 or later. The gem uses only Ruby's standard library. It ships RBS signatures, so [Steep](https://github.com/soutaro/steep) can check your calls with `library "synthient"` in your Steepfile.
 
 ## API Keys
 
-Every request to the HTTP API needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one yet, [contact us](mailto:contact@synthient.com). Each key carries scopes that decide what it can call. `BASIC` covers the lookups and `account`, and each feed has one scope for its real-time stream and one for its exports, listed under [Feeds](#feeds). See [Authentication](https://docs.synthient.com/authentication) for how scopes work.
+Every request needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one, [contact us](mailto:contact@synthient.com). A key's scopes decide what it can call: `BASIC` covers the lookups and `account`, and each feed has its own scopes, listed under [Feeds](#feeds).
 
-If a request fails even though you are sending a key, it is usually one of these:
+If a request fails even though you are sending a key:
 
-- **401 Unauthorized**: the key is malformed, unknown, or revoked. Check that it was loaded from the environment and isn't truncated.
-- **402 Payment Required**: the team is out of lookup credits. `account` reports the remaining balance and when it resets.
-- **403 Forbidden**: the key lacks the scope for that endpoint or feed. `account` lists the key's scopes.
+- **401 Unauthorized**: the key is malformed, unknown, or revoked.
+- **402 Payment Required**: the team is out of lookup credits.
+- **403 Forbidden**: the key lacks the scope for that endpoint or feed.
+
+`account` shows the key's scopes and the team's remaining credits.
 
 ## Authentication
 
@@ -88,19 +90,19 @@ This SDK supports the following security scheme:
 | --------- | ------- | ------------------ | -------------------- |
 | `api_key` | API key | `x-api-key` header | `SYNTHIENT_API_KEY`  |
 
-`Synthient::Client.new` reads the key from `SYNTHIENT_API_KEY`. To supply it another way, such as from a secret manager, pass `api_key:`. Don't write the key into your code:
+`Synthient::Client.new` reads the key from `SYNTHIENT_API_KEY`. To read it from somewhere else, such as a secret manager, pass `api_key:`:
 
 ```ruby
 client = Synthient::Client.new(api_key: ENV.fetch("SYNTHIENT_PRODUCTION_KEY"))
 ```
 
-A missing or blank key raises `ArgumentError`. Creating a client makes no network calls, so an invalid key shows up as a 401 on the first request. The key is sent only to the Synthient API, never to the storage host that serves export downloads.
+Creating a client makes no network calls. To check a key, call `account`, which costs no credits.
 
 ## SDK Example Usage
 
 ### Look up an IP address
 
-Get the network, location, and risk intelligence for an IPv4 or IPv6 address, given as a `String` or an `IPAddr`. Each lookup costs one credit, and failed lookups are free.
+Get the network, location, and risk intelligence for an IPv4 or IPv6 address, given as a `String` or an `IPAddr`. Each lookup costs one credit; failed lookups are free.
 
 ```ruby
 require "synthient"
@@ -114,13 +116,13 @@ puts "#{intelligence.risk_score} #{intelligence.categories.join(", ")}" if intel
 client.close
 ```
 
-`network`, `location`, and `intelligence` are nil when the API has no data for that section, so check them before reading their fields. Responses are frozen `Data` objects, so they support `to_h` and pattern matching.
+`network`, `location`, and `intelligence` are nil when the API has no data for them. Responses are frozen `Data` objects that support `to_h` and pattern matching.
 
-A client keeps a pool of keep-alive connections and is safe to share between threads, so create one, reuse it, and call `close` when you are done. In a forking server, a child process never reuses connections inherited from its parent. The examples below reuse `client`. Runnable programs are in [examples](https://github.com/synthient/synthient-ruby/tree/main/examples), for example `bundle exec ruby examples/lookup_ip.rb 8.8.8.8`.
+A client keeps its connections open and is safe to share between threads, so create one, reuse it, and call `close` when you are done. The examples below reuse `client`, and runnable programs are in [examples](https://github.com/synthient/synthient-ruby/tree/main/examples).
 
 ### Look up many IP addresses
 
-Look up as many as 1000 addresses in one request, billed at `ceil(n * 0.9)` credits for the `n` distinct addresses looked up. Private and reserved addresses are skipped and duplicates collapse into one result, so match results by `ip` rather than by position. An address that isn't valid raises `ArgumentError` before anything is sent.
+Look up as many as 1000 addresses in one request for `ceil(n * 0.9)` credits. Private and reserved addresses are skipped and duplicates are merged, so match results by `ip`.
 
 ```ruby
 results = client.lookup_ips(["8.8.8.8", "1.1.1.1"])
@@ -131,7 +133,7 @@ end
 
 ### Look up a domain
 
-Get the honeypot traffic observed for a domain, with its most recent events. A domain that has never been observed returns an inactive status and zero counts rather than an error. Each lookup costs one credit.
+Get the honeypot traffic observed for a domain and its most recent events. Each lookup costs one credit.
 
 ```ruby
 domain = client.lookup_domain("example.com", limit: 10)
@@ -143,7 +145,7 @@ end
 
 ### Check your account
 
-Get the account that owns the API key, with the key's scopes and the team's remaining lookup credits. It costs no credits.
+Get the key's account, scopes, and remaining lookup credits, at no cost.
 
 ```ruby
 account = client.account
@@ -160,7 +162,7 @@ puts "#{account.organization.name} #{account.scopes.join(", ")} #{account.lookup
 - [`lookup_ip`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_ip-instance_method) - Look up an IPv4 or IPv6 address
 - [`lookup_ips`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_ips-instance_method) - Look up as many as 1000 addresses in one request
 - [`lookup_domain`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_domain-instance_method) - Look up the honeypot traffic observed for a domain
-- [`account`](https://rubydoc.info/gems/synthient/Synthient/Client#account-instance_method) - Get the account that owns the API key, the key's scopes, and the team's remaining lookup credits
+- [`account`](https://rubydoc.info/gems/synthient/Synthient/Client#account-instance_method) - Get the key's account, scopes, and remaining lookup credits
 - [`health`](https://rubydoc.info/gems/synthient/Synthient/Client#health-instance_method) - Check that the API and its dependencies are healthy
 
 ### [Feeds](https://rubydoc.info/gems/synthient/Synthient/Feed)
@@ -189,7 +191,7 @@ Each feed is a method of the client, such as `client.proxies`, and has the same 
 
 ## Streaming
 
-`stream` yields a feed's real-time events as they arrive. Each call opens a new connection, and breaking out of the block closes it. The server keeps a stream open for up to 30 minutes and then closes it, at which point `stream` returns normally. The API has no resume cursor, so call it again to reconnect:
+`stream` yields a feed's real-time events. Each call opens a connection, and breaking out of the block closes it:
 
 ```ruby
 loop do
@@ -200,7 +202,7 @@ rescue Synthient::APIError => e
   raise if [401, 403].include?(e.status)
 
   warn "proxy stream: #{e.message}"
-  # Pause after a failure so a failing stream doesn't reconnect in a tight loop.
+  # Avoid reconnecting in a tight loop.
   sleep 2
 rescue Synthient::Error => e
   warn "proxy stream: #{e.message}"
@@ -208,11 +210,16 @@ rescue Synthient::Error => e
 end
 ```
 
-The loop stops on a 401 or 403, because reconnecting can't fix a rejected key or a missing scope. Any other failure, such as another error response or a dropped connection, raises a `Synthient::Error`, and the loop waits 2 seconds before reconnecting. After the server's routine close, it reconnects at once. A 429 `APIError` without `retry_after` means the key already has too many open streams. Without a block, `stream` returns an `Enumerator` that opens the connection when you iterate it.
+- The server closes each stream after up to 30 minutes. `stream` then returns normally, and the loop reconnects at once.
+- A 401 or 403 stops the loop, because reconnecting can't fix a rejected key or a missing scope.
+- Any other failure raises a `Synthient::Error`, and the loop waits 2 seconds before reconnecting.
+- Events sent while disconnected are missed. The API has no resume cursor.
+
+Without a block, `stream` returns an `Enumerator` that connects when you iterate it.
 
 ## Pagination
 
-`list_exports` returns one page of a feed's exports, newest first:
+`list_exports` returns one page of a feed's exports, newest first. Pass `page.next_cursor` as `cursor:` to get the next page; it is nil on the last one.
 
 ```ruby
 page = client.proxies.list_exports(limit: 50)
@@ -221,7 +228,7 @@ page.exports.each do |export|
 end
 ```
 
-To get the next page, pass `page.next_cursor` as `cursor:`. It is nil on the last page. `each_export` does the paging for you. It fetches pages as the block needs them and stops fetching when you break out:
+`each_export` fetches the pages for you as the block needs them:
 
 ```ruby
 client.proxies.each_export do |export|
@@ -229,13 +236,13 @@ client.proxies.each_export do |export|
 end
 ```
 
-Without a block, `each_export` returns an `Enumerator`, so `client.proxies.each_export.first(10)` fetches only the pages it needs.
+Without a block, it returns an `Enumerator`, so `client.proxies.each_export.first(10)` fetches only the pages it needs.
 
-On the first page, the newest hourly export has the ID `"latest"`, a moving alias for the freshest export. To keep a stable ID, build it from the export's `date` and `hour`, such as `"2026-10-14/21"`.
+On the first page, the newest hourly export has the ID `"latest"`, a moving alias for the freshest export. Its `date` and `hour` give its stable ID, such as `"2026-10-14/21"`.
 
 ## Downloads
 
-Exports are Parquet files. Identify one by the `id` of an `Export` from a listing, by `"latest"` for the freshest one, or by a `Date` (not a `DateTime`) or `Time` for a UTC day or hour. Strings such as `"2026-10-15"` and `"2026-10-15/13"` work too. `download` yields the file's bytes in chunks as they arrive:
+Exports are Parquet files. `download` yields a file's bytes in chunks as they arrive:
 
 ```ruby
 File.open("proxies.parquet", "wb") do |file|
@@ -243,20 +250,23 @@ File.open("proxies.parquet", "wb") do |file|
 end
 ```
 
-The file comes from a presigned storage URL that is requested without your API key, and that request is not retried. The SDK doesn't verify the bytes, so compare their SHA-256 with the export's `checksum`, from a listing or `export_meta`. Use the same stable ID for the checksum and the download, because `"latest"` can move to a newer export between the two calls. `download_url` returns the presigned URL itself for tools that read Parquet over HTTPS. The URL grants access without a key for 24 hours, so treat it as a secret.
-
-An hourly export is available until its day's daily export is rolled up, shortly after 00:30 UTC the next day. After that, requests for the hour raise a 400 `APIError`. While a daily export is being rolled up, requests for it raise a 404 `APIError` with `retry_after` set.
+- Name an export by its `id` from a listing, by `"latest"`, or by a `Date` or `Time` for a UTC day or hour.
+- `export_meta` returns the file's SHA-256 `checksum`. Use a fixed ID for both calls, because `"latest"` can move between them.
+- `download_url` returns a presigned URL that works without a key for 24 hours, so treat it as a secret. Your API key is never sent to the storage host.
+- Hourly exports roll into the daily export shortly after 00:30 UTC the next day. After that, a request for the hour raises a 400.
 
 ## Retries
 
-The client retries a failed request up to twice by default, backing off exponentially with jitter and honoring `Retry-After`:
+The client retries a failed request up to twice, backing off exponentially with jitter and honoring `Retry-After`:
 
-- Account and feed requests to the API are retried on 500, 502, 503, and 504 responses, on network failures and timeouts before a response arrives (except TLS errors), and on 429 responses that carry `Retry-After`. The storage request behind `download` is not retried, and neither is a failure while reading a stream or download.
-- Billed lookups (`lookup_ip`, `lookup_ips`, and `lookup_domain`) are retried only on 429 responses that carry `Retry-After`, which the rate limiter returns before doing any work, so a lookup is never charged twice. `health` is retried the same way, so an unhealthy API is reported at once.
+| Requests                    | Retried on                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------- |
+| Account and feed requests   | 500, 502, 503, and 504, most network failures, and 429 with `Retry-After`                    |
+| Billed lookups and `health` | Only 429 with `Retry-After`, which comes before any work, so a lookup is never charged twice |
 
-A 429 without `Retry-After` means the key's monthly request budget is spent or it has too many open streams, so it is raised without a retry. A `Retry-After` longer than 60 seconds is raised to you instead of waited out.
+A 429 without `Retry-After` means the monthly request budget is spent or too many streams are open, so it is raised at once. Downloads from the storage host are never retried.
 
-To change the number of retries, pass `max_retries:` when creating the client. Zero disables retries:
+Set the number of retries with `max_retries:`. Zero disables them:
 
 ```ruby
 client = Synthient::Client.new(max_retries: 4)
@@ -264,27 +274,29 @@ client = Synthient::Client.new(max_retries: 4)
 
 ## Timeouts
 
-Each read or write waits at most `timeout:` seconds, 60 by default, and opening a connection waits at most `open_timeout:` seconds, 10 by default. They limit each step rather than a whole call, so streams and downloads run as long as data keeps arriving. A quiet stream receives only a blank keepalive line about every 15 seconds, so keep `timeout:` above that. Running out of time raises `Synthient::TimeoutError`:
+The client sets no overall timeout, because streams and downloads are long-lived. Instead, `timeout:` limits each read or write, 60 seconds by default, and `open_timeout:` limits connecting, 10 seconds by default:
 
 ```ruby
 client = Synthient::Client.new(timeout: 30, open_timeout: 5)
 ```
 
+The server sends a blank keepalive line on a quiet stream about every 15 seconds, so keep `timeout:` above that. Running out of time raises `Synthient::TimeoutError`.
+
 ## Error Handling
 
-A request that fails with an error status raises a [`Synthient::APIError`](https://rubydoc.info/gems/synthient/Synthient/APIError). It has the following attributes:
+A request that fails with an error status raises a [`Synthient::APIError`](https://rubydoc.info/gems/synthient/Synthient/APIError):
 
-| Attribute     | Type                          | Description                                                                                     |
-| ------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `status`      | `Integer`                     | HTTP response status code, such as `404`                                                        |
-| `type`        | `String?`                     | URI identifying the problem type, such as `https://docs.synthient.com/errors/validation-failed` |
-| `title`       | `String?`                     | Short summary of the problem type                                                               |
-| `detail`      | `String?`                     | Explanation of this occurrence. For a plain-text error, the response body                       |
-| `errors`      | `Hash[String, Array[String]]` | Validation messages by request field                                                            |
-| `request_id`  | `String?`                     | Request ID to give Synthient support                                                            |
-| `retry_after` | `Numeric?`                    | Seconds the server asked you to wait before retrying, or nil                                    |
+| Attribute     | Type                          | Description                                  |
+| ------------- | ----------------------------- | -------------------------------------------- |
+| `status`      | `Integer`                     | HTTP status code, such as `404`              |
+| `type`        | `String?`                     | URI identifying the problem type             |
+| `title`       | `String?`                     | Short summary of the problem type            |
+| `detail`      | `String?`                     | Explanation of this occurrence               |
+| `errors`      | `Hash[String, Array[String]]` | Validation messages by request field         |
+| `request_id`  | `String?`                     | Request ID to give Synthient support         |
+| `retry_after` | `Numeric?`                    | Seconds the server asked you to wait, or nil |
 
-Its `message` holds only the status, such as `429 Too Many Requests`. The other attributes hold untrusted server data that can be sensitive, so log them deliberately.
+Its `message` holds only the HTTP status, so it is safe to log. The attributes hold untrusted server data.
 
 ### Example
 
@@ -305,28 +317,28 @@ end
 
 ### Error Types
 
-- [`Synthient::Error`](https://rubydoc.info/gems/synthient/Synthient/Error): the base class of every error the SDK raises for a failed request. It is raised itself when a storage redirect is invalid or loops, or when export pagination repeats a cursor.
-- [`Synthient::APIError`](https://rubydoc.info/gems/synthient/Synthient/APIError): the API, or the storage host serving a download, returned an error status.
-- [`Synthient::ConnectionError`](https://rubydoc.info/gems/synthient/Synthient/ConnectionError): the request couldn't be sent or the response couldn't be read. The underlying exception is its `cause`.
-- [`Synthient::TimeoutError`](https://rubydoc.info/gems/synthient/Synthient/TimeoutError): a connect, read, or write ran out of time. It is a `ConnectionError`.
+- [`Synthient::Error`](https://rubydoc.info/gems/synthient/Synthient/Error): the base class of every error the SDK raises for a failed request.
+- [`Synthient::APIError`](https://rubydoc.info/gems/synthient/Synthient/APIError): the API, or the storage host during `download`, returned an error status.
+- [`Synthient::ConnectionError`](https://rubydoc.info/gems/synthient/Synthient/ConnectionError): the request couldn't be sent or the response couldn't be read.
+- [`Synthient::TimeoutError`](https://rubydoc.info/gems/synthient/Synthient/TimeoutError): a `ConnectionError` for a connect, read, or write that ran out of time.
 - [`Synthient::DecodeError`](https://rubydoc.info/gems/synthient/Synthient/DecodeError): a successful response didn't match the API schema.
-- `ArgumentError` and `TypeError`: an argument was invalid, such as a missing API key or a malformed IP address. Nothing was sent.
+- `ArgumentError` and `TypeError`: invalid arguments, such as a missing API key, raised before any request is sent.
 - `IOError`: the client was used after `close`.
 
 <details><summary>Status codes</summary>
 
 <br />
 
-| Status | Meaning                                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------------------ |
-| 400    | The request is invalid, such as asking for an hourly export that has been rolled up                                |
-| 401    | The API key is malformed, unknown, or revoked                                                                      |
-| 402    | The team is out of lookup credits                                                                                  |
-| 403    | The key lacks the scope for the endpoint or feed                                                                   |
-| 404    | The export does not exist, or a daily export is still being rolled up and `retry_after` is set                     |
-| 422    | The input is invalid, such as a private or reserved address, a malformed domain, or a batch with no usable address |
-| 429    | With `retry_after`, the rate limit was hit. Without it, the request budget is spent or too many streams are open   |
-| 5xx    | The server failed. Account and feed requests are retried on 500, 502, 503, and 504                                 |
+| Status | Meaning                                                                                          |
+| ------ | ------------------------------------------------------------------------------------------------ |
+| 400    | The request is invalid, such as an hourly export that was rolled up                              |
+| 401    | The API key is malformed, unknown, or revoked                                                    |
+| 402    | The team is out of lookup credits                                                                |
+| 403    | The key lacks the scope for the endpoint or feed                                                 |
+| 404    | The export doesn't exist, or a daily export is still rolling up (`retry_after` is set)           |
+| 422    | The input is invalid, such as a private address or a malformed domain                            |
+| 429    | Rate limited if `retry_after` is set; otherwise the budget is spent or too many streams are open |
+| 5xx    | The server failed                                                                                |
 
 </details>
 
@@ -334,7 +346,7 @@ end
 
 ### Override Server URL Per-Client
 
-The default server is `https://api.synthient.com/api/v4`. To send requests elsewhere, such as through a gateway or to a mock server in tests, pass `base_url:` when creating the client. The URL includes the version path:
+The default server is `https://api.synthient.com/api/v4`. Use `base_url:` to send requests elsewhere, such as a mock server in tests:
 
 ```ruby
 client = Synthient::Client.new(base_url: "http://localhost:8080/api/v4")
@@ -342,19 +354,21 @@ client = Synthient::Client.new(base_url: "http://localhost:8080/api/v4")
 
 ## Custom HTTP Client
 
-The client sends requests with Ruby's `Net::HTTP` and doesn't accept a replacement. It turns off `Net::HTTP`'s own retry, so a stale keep-alive connection never resends a billed lookup.
-
-`Net::HTTP` takes proxy settings from the environment. To route requests through a proxy, set `http_proxy`, which `Net::HTTP` uses for HTTPS requests too. It ignores `https_proxy`, and `no_proxy` exempts hosts from the proxy:
+The client uses Ruby's `Net::HTTP` and doesn't accept a replacement. To use a proxy, set `http_proxy`:
 
 ```sh
 export http_proxy=http://proxy.example.com:8080
 ```
 
-Export downloads from storage go through the same proxy. To identify your application, `user_agent: "my-app/1.2"` appends a product token to the `User-Agent` header.
+- `Net::HTTP` uses `http_proxy` for HTTPS requests too and ignores `https_proxy`. `no_proxy` exempts hosts.
+- Export downloads from storage go through the same proxy.
+- `Net::HTTP`'s own retry is off, so a stale keep-alive connection never resends a billed lookup.
+
+`user_agent: "my-app/1.2"` adds your product token to the `User-Agent` header.
 
 ## Debugging
 
-`response_hook:` takes anything that responds to `call`, and calls it after every API response arrives, including each retry, page, and stream handshake. It receives a `Synthient::ResponseMetadata` with the status code, the request ID to give Synthient support, the operation's rate limit, and a frozen copy of the response headers with lowercase names:
+`response_hook:` takes any callable and calls it after every API response, including retries, pages, and stream handshakes, with a `Synthient::ResponseMetadata` holding the status, request ID, rate limit, and headers:
 
 ```ruby
 client = Synthient::Client.new(
@@ -366,14 +380,14 @@ client = Synthient::Client.new(
 )
 ```
 
-The hook runs synchronously on the thread that made the request, before the response body is read, and exceptions it raises propagate to that call. Storage download responses are not passed to it.
+The hook runs on the thread that made the request, and exceptions it raises propagate to that call.
 
 > [!WARNING]
 > Response headers can contain secrets, such as presigned download URLs. Avoid logging `meta.headers` in production.
 
 ## gRPC Schema
 
-[`Synthient::GRPCSchema`](https://rubydoc.info/gems/synthient/Synthient/GRPCSchema) fetches the protobuf schema of the [Synthient gRPC API](https://docs.synthient.com/grpc) through gRPC server reflection. It needs the `grpc` and `google-protobuf` gems, as described under [SDK Installation](#sdk-installation):
+[`Synthient::GRPCSchema`](https://rubydoc.info/gems/synthient/Synthient/GRPCSchema) fetches the protobuf schema of the [Synthient gRPC API](https://docs.synthient.com/grpc) through server reflection:
 
 ```ruby
 require "synthient/grpcschema"
@@ -389,13 +403,13 @@ schema.descriptor_set.file.each do |file|
 end
 ```
 
-`schema.descriptor_set` is a `Google::Protobuf::FileDescriptorSet` with each file after the files it imports. `explain` describes common gRPC errors in plain language, and returns nil for the rest. A fetch gives up after `timeout:` seconds, 30 by default.
+`schema.descriptor_set` is a `Google::Protobuf::FileDescriptorSet`. `explain` describes common gRPC errors in plain language.
 
 # Development
 
 ## Maturity
 
-This SDK follows [Semantic Versioning](https://semver.org). Breaking changes to its public API ship only in a new major version, so a constraint such as `gem "synthient", "~> 1.0"` picks up new features and fixes without breaking changes.
+This SDK follows [Semantic Versioning](https://semver.org). Breaking changes ship only in a new major version, so a constraint such as `gem "synthient", "~> 1.0"` never picks them up.
 
 ## Contributions
 
