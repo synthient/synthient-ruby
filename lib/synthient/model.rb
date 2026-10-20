@@ -1,18 +1,15 @@
 # frozen_string_literal: true
 
 module Synthient
-  # Defines the response models and decodes API JSON into them.
-  #
-  # Models are Data classes. Decoding is strict: a field the API schema
-  # requires must be present, non-null, and of its declared type. Optional
-  # fields may be absent or null and become nil. Unknown fields are ignored so
-  # that additive API changes don't break decoding.
+  # Decoding is strict: a field the API schema requires must be present,
+  # non-null, and of its declared type. Optional fields may be absent or null
+  # and become nil. Unknown fields are ignored so that additive API changes
+  # don't break decoding.
   #
   # @api private
   module Model
     Field = Data.define(:name, :wire, :type, :required)
 
-    # Collects the fields declared in a Model.define block.
     class Builder
       attr_reader :fields
 
@@ -29,8 +26,6 @@ module Synthient
       end
     end
 
-    # Builds a Data class from +required+ and +optional+ field declarations.
-    # Optional members default to nil.
     def self.define(&)
       builder = Builder.new
       builder.instance_eval(&)
@@ -67,6 +62,8 @@ module Synthient
         return value if [true, false].include?(value)
       when :unix_time
         if value.is_a?(Integer)
+          # The spec says seconds, but the Helios docs show milliseconds, so
+          # values from 1e12 up are read as milliseconds.
           return Time.at(value, in: "UTC") if value < 1_000_000_000_000
 
           return Time.at(value / 1000, value % 1000, :millisecond, in: "UTC")

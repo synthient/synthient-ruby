@@ -26,7 +26,7 @@ module Synthient
     INTERNET_SCANNER = "INTERNET_SCANNER"
   end
 
-  # A proxy sighting from the proxies feed. +type+ is one of ProxyType.
+  # +type+ is one of ProxyType.
   ProxyEvent = Model.define do
     optional :ip, :string
     optional :provider, :string
@@ -36,8 +36,8 @@ module Synthient
     optional :timestamp, :unix_time
   end
 
-  # A VPN or anonymizer address range from the anonymizers feed. +type+ is one
-  # of ProxyType, and +country_code+ and +asn+ describe +range_start+.
+  # +type+ is one of ProxyType, and +country_code+ and +asn+ describe
+  # +range_start+.
   AnonymizerEvent = Model.define do
     optional :range_start, :string
     optional :range_end, :string
@@ -48,14 +48,13 @@ module Synthient
     optional :timestamp, :unix_time
   end
 
-  # A file in a torrent. +length+ is in bytes.
+  # +length+ is in bytes.
   TorrentFile = Model.define do
     optional :path, :string
     optional :length, :integer
   end
 
-  # A peer seen sharing a torrent. +source+ is where the peer was found, such
-  # as "DHT", "PEX", or "tracker".
+  # +source+ is where the peer was found, such as "DHT", "PEX", or "tracker".
   TorrentPeer = Model.define do
     optional :ip, :string
     optional :port, :integer
@@ -63,8 +62,7 @@ module Synthient
     optional :encrypted, :bool
   end
 
-  # A torrent observed on the BitTorrent DHT or a tracker. +info_hash+ is the
-  # hex SHA-1 info hash, and sizes are in bytes.
+  # +info_hash+ is the hex SHA-1 info hash, and sizes are in bytes.
   TorrentEvent = Model.define do
     optional :info_hash, :string
     optional :name, :string
@@ -98,7 +96,8 @@ module Synthient
     optional :provider, :string
   end
 
-  # A parsed HTTP request. +http_method+ is the request method.
+  # +http_method+ is the request method. The API calls it +method+, which
+  # would shadow Object#method.
   HTTPRequestDetails = Model.define do
     optional :http_method, :string, wire: "method"
     optional :uri, :string
@@ -106,8 +105,8 @@ module Synthient
     optional :headers, { string: :string }
   end
 
-  # An HTTP request captured by a Helios honeypot. +domain+ is the host the
-  # proxy tunnel was opened to, and +raw+ holds the raw request bytes.
+  # +domain+ is the host the proxy tunnel was opened to, and +raw+ holds the
+  # raw request bytes.
   HeliosHTTPEvent = Model.define do
     required :timestamp, :unix_time
     required :tunnel_id, :integer
@@ -126,15 +125,14 @@ module Synthient
     optional :name, :string
   end
 
-  # An extension in a TLS ClientHello. +length+ is the body length in bytes.
+  # +length+ is the extension body length in bytes.
   TLSExtension = Model.define do
     optional :code, :integer
     optional :name, :string
     optional :length, :integer
   end
 
-  # A TLS ClientHello parsed by a Helios sensor. Fields the sensor could not
-  # parse are nil.
+  # Fields the sensor could not parse are nil.
   TLSClientHello = Model.define do
     optional :record_version, :string
     optional :handshake_version, :string

@@ -32,7 +32,6 @@ module Synthient
       501 => "Not Implemented", 502 => "Bad Gateway", 503 => "Service Unavailable", 504 => "Gateway Timeout"
     }.freeze
 
-    # @return [Integer] the HTTP status code
     attr_reader :status
     # @return [String, nil] the problem type URI
     attr_reader :type

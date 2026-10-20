@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 module Synthient
-  # Whether an export covers an hour or a day.
   module ExportKind
     HOURLY = "hourly"
     DAILY = "daily"
   end
 
-  # Parquet column types. New values may be added.
+  # New values may be added.
   module ParquetType
     STRING = "string"
     INT64 = "int64"
@@ -17,9 +16,8 @@ module Synthient
     BYTES = "bytes"
   end
 
-  # A parquet export of a feed. +hour+ is nil for a daily export. +checksum+
-  # is the hex SHA-256 of the file. +download_path+ includes the /api/v4
-  # prefix.
+  # +hour+ is nil for a daily export. +checksum+ is the hex SHA-256 of the
+  # file. +download_path+ includes the /api/v4 prefix.
   Export = Model.define do
     required :id, :string
     required :kind, :string
@@ -32,26 +30,25 @@ module Synthient
     required :download_path, :string
   end
 
-  # One page of a feed's exports. +next_cursor+ is nil on the last page.
+  # +next_cursor+ is nil on the last page.
   ExportPage = Model.define do
     required :stream, :string
     required :exports, [Export], wire: "feeds"
     optional :next_cursor, :string
   end
 
-  # A parquet column. +type+ is one of ParquetType.
+  # +type+ is one of ParquetType.
   ParquetColumn = Model.define do
     required :name, :string
     required :type, :string
   end
 
-  # The columns of a parquet export.
   ParquetSchema = Model.define do
     required :fields, [ParquetColumn]
   end
 
-  # The metadata of a parquet export. +hour+ is nil for a daily export.
-  # +size+ is in bytes and +checksum+ is the hex SHA-256 of the file.
+  # +hour+ is nil for a daily export. +size+ is in bytes and +checksum+ is
+  # the hex SHA-256 of the file.
   ExportMeta = Model.define do
     required :id, :string
     required :stream, :string

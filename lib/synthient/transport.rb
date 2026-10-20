@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module Synthient
-  # Sends requests to the API and to export storage over Net::HTTP.
-  #
   # Net::HTTP's own retry is disabled on every session, so a stale keep-alive
   # connection never replays a billed lookup. Retries happen only here:
   # :rate_limit retries a 429 that carries Retry-After, and :transient also
@@ -26,8 +24,6 @@ module Synthient
       Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError
     ].freeze
 
-    # Parses a Retry-After value, in delta seconds or as an HTTP date, into
-    # seconds. Returns nil when the value is absent or invalid.
     def self.parse_retry_after(value)
       value = value.to_s.strip
       return nil if value.empty?
@@ -53,7 +49,6 @@ module Synthient
       @closed = false
     end
 
-    # Sends an API request and returns the JSON object of a 2xx response.
     def json(method, path, policy:, query: nil, body: nil)
       execute(method, path, policy:, query:, body:) do |response|
         raise_api_error(response) unless response.is_a?(Net::HTTPSuccess)
@@ -67,9 +62,8 @@ module Synthient
       end
     end
 
-    # Opens an NDJSON stream and yields each event as a JSON object. Blank
-    # keepalive lines are skipped, and a final line without a newline is
-    # still decoded.
+    # Blank keepalive lines are skipped, and a final line without a newline
+    # is still decoded.
     def stream(path)
       execute("GET", path, policy: :transient, accept: "application/x-ndjson", dedicated: true) do |response|
         raise_api_error(response) unless response.code == "200"
@@ -91,7 +85,6 @@ module Synthient
       end
     end
 
-    # Returns the validated Location of the redirect an export answers with.
     def redirect_location(path)
       execute("GET", path, policy: :transient) do |response|
         raise_api_error(response) if response.code.to_i >= 400
@@ -112,10 +105,8 @@ module Synthient
       end
     end
 
-    # Downloads a presigned export URL from storage and yields its bytes as
-    # stored. It sends User-Agent and Accept-Encoding: identity, never the API
-    # key. Up to MAX_REDIRECTS redirects are followed, and never from https to
-    # http.
+    # Never sends the API key to storage. Accept-Encoding: identity yields the
+    # bytes as stored.
     def download(uri, &block)
       redirects = 0
       while redirects <= MAX_REDIRECTS
@@ -226,8 +217,8 @@ module Synthient
       )
     end
 
-    # Reads a response body in chunks, turning transport failures into
-    # ConnectionError. Exceptions raised by the block pass through unchanged.
+    # Exceptions from the block pass through unchanged, so an IOError raised
+    # by a caller's block is not reported as a ConnectionError.
     def read_body(response)
       in_block = false
       response.read_body do |chunk|
@@ -259,8 +250,6 @@ module Synthient
       raise DecodeError, "response is not valid JSON"
     end
 
-    # Raises an APIError for an error response, parsing up to MAX_ERROR_SIZE
-    # bytes of problem details. A text/plain body becomes the detail.
     def raise_api_error(response)
       status = response.code.to_i
       retry_after = Transport.parse_retry_after(response["retry-after"])
@@ -340,6 +329,8 @@ module Synthient
       session.write_timeout = @timeout
       session.keep_alive_timeout = 2
       session.max_retries = 0
+      # A body cut short of its Content-Length raises EOFError instead of
+      # reading as complete.
       session.ignore_eof = false
       session.response_body_encoding = false
       session.set_debug_output(nil)

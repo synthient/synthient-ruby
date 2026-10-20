@@ -18,7 +18,6 @@ begin
     raise if [401, 403].include?(e.status)
 
     warn "stream: #{e.message}"
-    # Avoid reconnecting in a tight loop.
     sleep 2
   rescue Synthient::Error => e
     warn "stream: #{e.message}"

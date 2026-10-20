@@ -23,8 +23,7 @@ module Synthient
       @event_type = event_type
     end
 
-    # Streams events as they happen, yielding each decoded event. Needs the
-    # feed's stream scope, such as PROXY_FIREHOSE.
+    # Needs the feed's stream scope, such as PROXY_FIREHOSE.
     #
     # The server ends each stream after up to 30 minutes, and the call then
     # returns normally. Events sent while disconnected are missed, so
@@ -43,7 +42,7 @@ module Synthient
 
     # Returns one page of the feed's exports, newest first.
     #
-    # @param limit [Integer, nil] exports per page, 1 to 500; the API default is 100
+    # @param limit [Integer, nil] exports per page; the API defaults to 100 and clamps values above 500
     # @param cursor [String, nil] the +next_cursor+ of the previous page
     # @return [ExportPage]
     def list_exports(limit: nil, cursor: nil)
@@ -59,7 +58,7 @@ module Synthient
     # Enumerator.
     #
     # @param limit [Integer, nil] exports per page
-    # @param cursor [String, nil] the cursor to start from
+    # @param cursor [String, nil] a +next_cursor+ to resume from
     # @yieldparam export [Export]
     # @return [nil]
     # @raise [Error] if the API returns a cursor it already returned

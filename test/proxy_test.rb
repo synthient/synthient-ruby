@@ -7,8 +7,7 @@ class ProxyTest < SynthientTest
   # The .invalid TLD never resolves, so a request that skipped the proxy fails.
   API_URL = "https://api.synthient.invalid/api/v4"
 
-  # Routes Net::HTTP through +proxy+ with http_proxy, which it also uses for
-  # HTTPS.
+  # Net::HTTP reads http_proxy for HTTPS requests too, so only it is set.
   def with_proxy(proxy)
     saved = PROXY_VARIABLES.to_h { |name| [name, ENV.fetch(name, nil)] }
     begin

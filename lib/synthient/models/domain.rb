@@ -16,7 +16,6 @@ module Synthient
     BURST_DRIVEN = "Activity is burst-driven with significant peaks."
   end
 
-  # Aggregate event counts for a domain.
   DomainStats = Model.define do
     required :events_24h, :integer
     required :total_events_30d, :integer
@@ -43,13 +42,11 @@ module Synthient
     required :events, :integer
   end
 
-  # How often a subdomain was targeted.
   SubdomainCount = Model.define do
     required :subdomain, :string
     required :count, :integer
   end
 
-  # How often a port was targeted.
   PortCount = Model.define do
     required :port, :integer
     required :count, :integer
@@ -62,8 +59,8 @@ module Synthient
     required :unique_ips, :integer
   end
 
-  # How a domain's events are spread over the day. +peak_hour+ and
-  # +quiet_hour+ are UTC hours, and +cadence+ is one of Cadence.
+  # +peak_hour+ and +quiet_hour+ are UTC hours, and +cadence+ is one of
+  # Cadence.
   ActivityStats = Model.define do
     required :cadence, :string
     required :median_per_hour, :integer
@@ -72,7 +69,8 @@ module Synthient
     required :quiet_hour, :integer
   end
 
-  # One recent event for a domain. +source_ip+ is the full source address.
+  # +source_ip+ is the full source address, although the API names it
+  # source_ip_masked.
   DomainEvent = Model.define do
     required :timestamp, :unix_time
     required :source_ip, :string, wire: "source_ip_masked"

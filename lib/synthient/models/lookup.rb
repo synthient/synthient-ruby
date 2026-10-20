@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Synthient
-  # Network types. New values may be added.
+  # New values may be added.
   module NetworkType
     MOBILE = "MOBILE"
     SATELLITE = "SATELLITE"
@@ -37,8 +37,8 @@ module Synthient
     optional :abuse_phone, :string
   end
 
-  # The geolocation of an address. +country+ is an ISO 3166-1 alpha-2 code and
-  # +timezone+ an IANA time zone name.
+  # +country+ is an ISO 3166-1 alpha-2 code and +timezone+ an IANA time zone
+  # name.
   Location = Model.define do
     required :country, :string
     required :state, :string
@@ -75,8 +75,8 @@ module Synthient
     required :devices, [Device]
   end
 
-  # The intelligence Synthient holds for an IP address. +network+,
-  # +location+, and +intelligence+ are nil when the API has no data for them.
+  # +network+, +location+, and +intelligence+ are nil when the API has no data
+  # for them.
   IPInfo = Model.define do
     required :ip, :ip
     optional :network, Network

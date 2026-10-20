@@ -39,10 +39,8 @@ module Synthient
     # @return [Feed<HeliosADBEvent>] ADB shell commands captured by Helios honeypots
     attr_reader :helios_adb
 
-    # Creates a client. It makes no network requests.
+    # Makes no network requests.
     #
-    # @param api_key [String] the API key, by default from SYNTHIENT_API_KEY
-    # @param base_url [String]
     # @param max_retries [Integer] retries after the first attempt; 0 disables them
     # @param timeout [Numeric] seconds to wait for each read or write
     # @param open_timeout [Numeric] seconds to wait for a connection
@@ -91,7 +89,7 @@ module Synthient
       @helios_adb = Feed.new(@transport, "/feeds/helio/adb", HeliosADBEvent)
     end
 
-    # Looks up an IP address. Costs one lookup credit; failed lookups are free.
+    # Costs one lookup credit; failed lookups are free.
     #
     # @param ip [String, IPAddr] an IPv4 or IPv6 address, without a prefix or zone
     # @return [IPInfo]
@@ -128,8 +126,7 @@ module Synthient
     # Looks up the honeypot traffic Synthient has observed for a domain. Costs
     # one lookup credit.
     #
-    # @param domain [String]
-    # @param limit [Integer, nil] how many recent events to return, 1 to 1000; the API default is 50
+    # @param limit [Integer, nil] how many recent events to return; the API defaults to 50 and clamps values above 1000
     # @return [DomainInfo]
     def lookup_domain(domain, limit: nil)
       raise TypeError, "domain must be a String" unless domain.is_a?(String)
@@ -148,8 +145,8 @@ module Synthient
       Model.decode(Account, @transport.json("GET", "/account/me", policy: :transient))
     end
 
-    # Checks that the API is up. An unhealthy API raises APIError and is not
-    # retried, since a 503 is the answer.
+    # Raises APIError when the API is unhealthy. A 503 is not retried, since it
+    # is the answer.
     #
     # @return [nil]
     def health

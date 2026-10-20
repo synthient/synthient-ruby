@@ -36,14 +36,14 @@ module Synthient
         "Timed out reading protobuf schemas from gRPC reflection. Use a longer timeout."
     }.freeze
 
-    # The result of GRPCSchema.fetch. +endpoint+ is the normalized address
-    # that was queried, +symbols+ the names that were resolved, and
-    # +descriptor_set+ a Google::Protobuf::FileDescriptorSet holding the
-    # resolved files in dependency order, each after the files it imports.
+    # +endpoint+ is the normalized address that was queried, +symbols+ the
+    # names that were resolved, and +descriptor_set+ a
+    # Google::Protobuf::FileDescriptorSet holding the resolved files in
+    # dependency order, each after the files it imports.
     Schema = Data.define(:endpoint, :symbols, :descriptor_set)
 
-    # A failed schema fetch. +code+ is the gRPC status code, or nil when the
-    # server's reflection responses were unusable.
+    # +code+ is the gRPC status code, or nil when the server's reflection
+    # responses were unusable.
     class SchemaError < Synthient::Error
       attr_reader :code
 
@@ -193,8 +193,8 @@ module Synthient
       channel&.close
     end
 
-    # Converts an endpoint to host:port form, and returns it with the host
-    # name used for TLS verification.
+    # Converts an endpoint to host:port form, and returns it with the bare
+    # host that reflection requests carry in their host field.
     #
     # @return [Array(String, String)] the endpoint and its host
     # @raise [ArgumentError] if the endpoint is empty or not a valid URL

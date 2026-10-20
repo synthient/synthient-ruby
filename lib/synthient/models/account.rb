@@ -34,15 +34,14 @@ module Synthient
     ADMIN_PROXIES = "ADMIN_PROXIES"
   end
 
-  # The organization an account belongs to. +relation+ is one of Relation.
+  # +relation+ is the account's role, one of Relation.
   Organization = Model.define do
     required :id, :string
     required :name, :string
     required :relation, :string
   end
 
-  # The account's lookup credits. +resets_in+ is the number of seconds until
-  # the credits reset.
+  # +resets_in+ is the number of seconds until the credits reset.
   LookupQuota = Model.define do
     required :credits, :integer
     required :resets_in, :integer

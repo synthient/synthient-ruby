@@ -45,8 +45,6 @@ class GRPCSchemaTest < SynthientTest
     rpc :ServerReflectionInfo, stream(Request), stream(Response)
   end
 
-  # A reflection service that answers from FILES and records the requests and
-  # metadata it sees.
   class FakeReflection < ReflectionService
     attr_reader :keys, :requests
     attr_accessor :services, :delay, :answers

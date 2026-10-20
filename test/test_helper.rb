@@ -46,8 +46,8 @@ class SynthientTest < Minitest::Test
     server
   end
 
-  # Builds a client for a test server whose retry waits are recorded in
-  # +sleeps+ instead of slept, and whose jitter is fixed at 1.0.
+  # Retry waits are recorded in +sleeps+ instead of slept, and jitter is fixed
+  # at 1.0.
   def new_client(server, base_url: server.url, **)
     client = Synthient::Client.new(api_key: API_KEY, base_url:, **)
     (@clients ||= []) << client
