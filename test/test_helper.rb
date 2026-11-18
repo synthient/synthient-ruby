@@ -37,7 +37,8 @@ class SynthientTest < Minitest::Test
   EXPORT = {
     "id" => "2026-05-07/21", "kind" => "hourly", "date" => "2026-05-07", "hour" => 21, "size_bytes" => 1_048_576,
     "row_count" => 1200, "checksum" => "ab12", "created_at" => 1_778_187_600,
-    "download_path" => "/api/v4/feeds/proxies/export/2026-05-07/21"
+    "download_path" => "/api/v4/feeds/proxies/export/2026-05-07/21",
+    "formats" => [{ "format" => "parquet", "size_bytes" => 1_048_576, "checksum" => "ab12" }]
   }.freeze
 
   def serve(&)

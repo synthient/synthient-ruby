@@ -75,8 +75,9 @@ module Synthient
     required :devices, [Device]
   end
 
-  # +network+, +location+, and +intelligence+ are nil when the API has no data
-  # for them.
+  # +network+ is nil when the address is in no known network range or the
+  # network lookup failed, and +location+ is nil whenever +network+ is.
+  # +intelligence+ is nil when the API has no data for it.
   IPInfo = Model.define do
     required :ip, :ip
     optional :network, Network

@@ -86,6 +86,13 @@ module Synthient
     optional :timestamp, :unix_time
   end
 
+  # The tunnel transport a Helios event arrived over. New values may be added.
+  module HeliosTransport
+    TCP = "tcp"
+    UDP = "udp"
+    QUIC = "quic"
+  end
+
   # The Helios honeypot sensor that captured an event. +proxy_ip+ and
   # +provider+ are the proxy exit address and service the traffic arrived
   # through.
@@ -132,7 +139,12 @@ module Synthient
     optional :length, :integer
   end
 
-  # Fields the sensor could not parse are nil.
+  # Fields the sensor could not parse are nil. +complete+ is false when the
+  # sensor captured only part of the ClientHello, and +truncated+ is true
+  # when it was cut short. +transport+ is the HeliosTransport the handshake
+  # was read from. The +_code+ fields hold wire code points, with
+  # +supported_version_codes+ in +supported_versions+ order, GREASE values
+  # included. +alpn_hex+ holds the +alpn+ entries hex-encoded, in order.
   TLSClientHello = Model.define do
     optional :record_version, :string
     optional :handshake_version, :string
@@ -160,11 +172,22 @@ module Synthient
     optional :renegotiation_info, :bool
     optional :signed_certificate_timestamps, :bool
     optional :status_request, :bool
+    optional :complete, :bool
+    optional :truncated, :bool
+    optional :transport, :string
+    optional :record_version_code, :integer
+    optional :handshake_version_code, :integer
+    optional :supported_version_codes, [:integer]
+    optional :alpn_hex, [:string]
+    optional :signature_algorithms_cert, [TLSCodeName]
+    optional :record_size_limit, :integer
+    optional :max_fragment_length, :integer
   end
 
   # A TLS ClientHello captured by a Helios honeypot. +details+ is nil when the
   # sensor could not parse the handshake. +raw+ is always nil, because the
-  # sensors do not capture handshake bytes.
+  # sensors do not capture handshake bytes. +transport+ is one of
+  # HeliosTransport.
   HeliosHTTPSEvent = Model.define do
     required :timestamp, :unix_time
     required :tunnel_id, :integer
@@ -174,11 +197,12 @@ module Synthient
     required :meta, HeliosMeta
     optional :details, TLSClientHello
     optional :raw, :string
+    required :transport, :string
   end
 
   # A destination a Helios honeypot tunnel was asked to reach. Despite the
   # feed's name, it is not a DNS query: names resolved inside a tunneled DNS
-  # session are not visible.
+  # session are not visible. +transport+ is one of HeliosTransport.
   HeliosDNSEvent = Model.define do
     required :timestamp, :unix_time
     required :tunnel_id, :integer
@@ -186,6 +210,7 @@ module Synthient
     required :port, :integer
     required :protocol, :string
     required :meta, HeliosMeta
+    required :transport, :string
   end
 
   # An Android Debug Bridge shell command captured by a Helios honeypot. It
@@ -193,10 +218,12 @@ module Synthient
   # 1-based position of the command in its session. +payload_hash+ is the hex
   # SHA-256 the sensor assigns to the session's payload, sent as +hash+: it is
   # not a hash of +command+, and every command in a session shares it.
+  # +meta+ is nil on events from sensors that don't send it yet.
   HeliosADBEvent = Model.define do
     required :session, :string
     required :sequential_id, :integer
     required :command, :string
     required :payload_hash, :string, wire: "hash"
+    optional :meta, HeliosMeta
   end
 end

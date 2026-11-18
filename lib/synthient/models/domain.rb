@@ -2,12 +2,14 @@
 
 module Synthient
   # Whether a domain had events in the last 24 hours.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   module DomainStatus
     ACTIVE = "active"
     INACTIVE = "inactive"
   end
 
   # The sentences that describe a domain's activity over the last 30 days.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   module Cadence
     NO_ACTIVITY = "No activity in the last 30 days."
     EVENLY_DISTRIBUTED = "Activity is evenly distributed across the day."
@@ -16,6 +18,7 @@ module Synthient
     BURST_DRIVEN = "Activity is burst-driven with significant peaks."
   end
 
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   DomainStats = Model.define do
     required :events_24h, :integer
     required :total_events_30d, :integer
@@ -23,6 +26,7 @@ module Synthient
 
   # Distinct source addresses seen for a domain. +sparkline_24h+ holds hourly
   # counts for the last 24 hours, oldest first.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   UniqueIPs = Model.define do
     required :value_24h, :integer
     required :value_30d, :integer
@@ -30,6 +34,7 @@ module Synthient
   end
 
   # The events and distinct addresses seen for a domain on one day.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   TimeSeriesPoint = Model.define do
     required :date, :unix_time
     required :events, :integer
@@ -37,22 +42,26 @@ module Synthient
   end
 
   # The autonomous system that sent the most events.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   ASNCount = Model.define do
     required :asn, :integer
     required :events, :integer
   end
 
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   SubdomainCount = Model.define do
     required :subdomain, :string
     required :count, :integer
   end
 
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   PortCount = Model.define do
     required :port, :integer
     required :count, :integer
   end
 
   # The events and distinct addresses seen from one country.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   CountryCount = Model.define do
     required :country_code, :string
     required :events, :integer
@@ -61,6 +70,7 @@ module Synthient
 
   # +peak_hour+ and +quiet_hour+ are UTC hours, and +cadence+ is one of
   # Cadence.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   ActivityStats = Model.define do
     required :cadence, :string
     required :median_per_hour, :integer
@@ -71,6 +81,7 @@ module Synthient
 
   # +source_ip+ is the full source address, although the API names it
   # source_ip_masked.
+  # @deprecated Used only by the deprecated Client#lookup_domain.
   DomainEvent = Model.define do
     required :timestamp, :unix_time
     required :source_ip, :string, wire: "source_ip_masked"
@@ -83,6 +94,9 @@ module Synthient
   # was never observed is +inactive+ with zero counts. +top_asn+ is nil when
   # there were no events. +hour_dow_heatmap+ has 7 rows, Monday first, of 24
   # UTC hourly counts.
+  # @deprecated Domain lookup was removed from the Synthient API and will stop
+  #   working when the endpoint is turned off. It will be removed in the next
+  #   major version.
   DomainInfo = Model.define do
     required :domain, :string
     required :status, :string

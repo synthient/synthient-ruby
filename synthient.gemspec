@@ -7,8 +7,7 @@ Gem::Specification.new do |spec|
   spec.version = Synthient::VERSION
   spec.authors = ["Synthient"]
   spec.summary = "The official Ruby client for the Synthient API"
-  spec.description = "IP and domain intelligence, account details, and real-time and bulk data feeds " \
-                     "from the Synthient API."
+  spec.description = "IP intelligence, account details, and real-time and bulk data feeds from the Synthient API."
   spec.homepage = "https://github.com/synthient/synthient-ruby"
   spec.license = "Apache-2.0"
   spec.required_ruby_version = ">= 3.3"

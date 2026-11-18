@@ -15,7 +15,18 @@ module Synthient
   # shortly after 00:30 UTC the next day. After that, requests for the hour
   # raise a 400 APIError. While a daily export is being rolled up, requests
   # for it raise a 404 APIError with +retry_after+ set.
+  #
+  # The proxies, anonymizers, and JA4T feeds also publish a lite variant of
+  # each export, deduplicated to the latest row in its hour or day: one row
+  # per address and provider for proxies, per address, fingerprint, and
+  # provider for JA4T, and per range and provider for anonymizers. Pass
+  # +variant: ExportVariant::LITE+ to reach it. A lite file is published
+  # shortly after its export, and until then requests for it raise a 404
+  # APIError. Other feeds have no lite variant, so their lite listings are
+  # empty.
   class Feed
+    include ExportRequests
+
     # @api private
     def initialize(transport, path, event_type)
       @transport = transport
@@ -25,11 +36,11 @@ module Synthient
 
     # Needs the feed's stream scope, such as PROXY_FIREHOSE.
     #
-    # The server ends each stream after up to 30 minutes, and the call then
-    # returns normally. Events sent while disconnected are missed, so
-    # reconnect in a loop. Breaking out of the block closes the connection.
-    # Without a block, returns an Enumerator that opens the connection when
-    # iterated.
+    # The server can end a stream at any time, such as during a deploy, and
+    # the call then returns normally. Events sent while disconnected are
+    # missed, so reconnect in a loop. Breaking out of the block closes the
+    # connection. Without a block, returns an Enumerator that opens the
+    # connection when iterated.
     #
     # @yieldparam event [Object] an event of this feed's type
     # @return [nil]
@@ -44,13 +55,12 @@ module Synthient
     #
     # @param limit [Integer, nil] exports per page; the API defaults to 100 and clamps values above 500
     # @param cursor [String, nil] the +next_cursor+ of the previous page
+    # @param day [String, Date, nil] lists only this UTC day's exports
+    # @param variant [String, nil] an ExportVariant. A lite export's ID is the
+    #   same as the full one's, so pass the variant again to reach its file.
     # @return [ExportPage]
-    def list_exports(limit: nil, cursor: nil)
-      raise ArgumentError, "limit must be a positive Integer" unless limit.nil? || (limit.is_a?(Integer) && limit.positive?)
-      raise TypeError, "cursor must be a String" unless cursor.nil? || cursor.is_a?(String)
-
-      query = { limit:, cursor: }.reject { |_, value| value.nil? || value == "" }
-      Model.decode(ExportPage, @transport.json("GET", "#{@path}/export", policy: :transient, query:))
+    def list_exports(limit: nil, cursor: nil, day: nil, variant: nil)
+      list_page(limit, cursor, day, { variant: })
     end
 
     # Yields every export, newest first, fetching pages as they are needed.
@@ -59,37 +69,44 @@ module Synthient
     #
     # @param limit [Integer, nil] exports per page
     # @param cursor [String, nil] a +next_cursor+ to resume from
+    # @param day [String, Date, nil] yields only this UTC day's exports
+    # @param variant [String, nil] an ExportVariant
     # @yieldparam export [Export]
     # @return [nil]
     # @raise [Error] if the API returns a cursor it already returned
-    def each_export(limit: nil, cursor: nil, &block)
-      return enum_for(:each_export, limit:, cursor:) unless block
+    def each_export(limit: nil, cursor: nil, day: nil, variant: nil, &block)
+      return enum_for(:each_export, limit:, cursor:, day:, variant:) unless block
 
-      seen = Set.new
-      while seen.add?(cursor)
-        page = list_exports(limit:, cursor:)
-        page.exports.each(&block)
-        cursor = page.next_cursor
-        return if cursor.nil? || cursor.empty?
-      end
-      raise Error, "export listing returned a repeated cursor"
+      each_listed_export(cursor, block) { |next_cursor| list_exports(limit:, cursor: next_cursor, day:, variant:) }
+      nil
+    end
+
+    # Returns the rows and bytes exported on each UTC day of a window that
+    # ends today, oldest first. Today's totals are still growing.
+    #
+    # @param days [Integer, nil] the window's length; the API defaults to 90 and allows up to 366
+    # @return [ExportVolume]
+    def export_volume(days: nil)
+      volume(days)
     end
 
     # Returns an export's metadata, including its parquet schema.
     #
     # @param export [String, Date, Time]
+    # @param variant [String, nil] an ExportVariant
     # @return [ExportMeta]
-    def export_meta(export)
-      Model.decode(ExportMeta, @transport.json("GET", "#{@path}/export/#{export_path(export)}/meta", policy: :transient))
+    def export_meta(export, variant: nil)
+      meta(export_path(export, hourly: true), { variant: })
     end
 
     # Returns a presigned URL for downloading an export. The URL is valid for
     # 24 hours and grants access without an API key, so treat it as a secret.
     #
     # @param export [String, Date, Time]
+    # @param variant [String, nil] an ExportVariant
     # @return [URI::HTTP]
-    def download_url(export)
-      @transport.redirect_location("#{@path}/export/#{export_path(export)}")
+    def download_url(export, variant: nil)
+      location(export_path(export, hourly: true), { variant: })
     end
 
     # Downloads an export, yielding the parquet file's bytes in chunks as they
@@ -98,38 +115,14 @@ module Synthient
     # closes the connection. Without a block, returns an Enumerator.
     #
     # @param export [String, Date, Time]
+    # @param variant [String, nil] an ExportVariant
     # @yieldparam chunk [String] binary bytes
     # @return [nil]
-    def download(export, &)
-      return enum_for(:download, export) unless block_given?
+    def download(export, variant: nil, &)
+      return enum_for(:download, export, variant:) unless block_given?
 
-      @transport.download(download_url(export), &)
+      @transport.download(download_url(export, variant:), &)
       nil
-    end
-
-    private
-
-    def export_path(export)
-      case export
-      when Time
-        time = export.getutc
-        "#{time.strftime("%Y-%m-%d")}/#{time.hour}"
-      when DateTime
-        raise TypeError, "export must be a Time or Date, not a DateTime"
-      when Date
-        export.strftime("%Y-%m-%d")
-      when String
-        return export if export == "latest"
-
-        match = %r{\A(\d{4})-(\d{2})-(\d{2})(?:/(\d{1,2}))?\z}.match(export)
-        unless match && Date.valid_date?(match[1].to_i, match[2].to_i, match[3].to_i) && match[4].to_i <= 23
-          raise ArgumentError, "invalid export ID #{export.inspect}"
-        end
-
-        match[4] ? "#{match[1]}-#{match[2]}-#{match[3]}/#{match[4].to_i}" : export
-      else
-        raise TypeError, "export must be a String, Date, or Time"
-      end
     end
   end
 end

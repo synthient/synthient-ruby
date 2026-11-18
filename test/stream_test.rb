@@ -40,11 +40,11 @@ class StreamTest < SynthientTest
         "extensions" => [{ "code" => 0, "name" => "server_name", "length" => 16 }],
         "alpn" => ["h2", "http/1.1"], "has_grease" => true, "future_field" => 1
       },
-      "raw" => nil
+      "raw" => nil, "transport" => "tcp"
     },
     helios_dns: {
       "timestamp" => 1_778_200_137_487, "tunnel_id" => 7, "domain" => "203.0.113.50", "port" => 53,
-      "protocol" => "dns", "meta" => META
+      "protocol" => "dns", "meta" => META, "transport" => "udp"
     },
     helios_adb: {
       "session" => "0123456789abcdef0123456789abcdef", "sequential_id" => 3, "command" => "uname -a",
@@ -81,7 +81,7 @@ class StreamTest < SynthientTest
       [feed, new_client(server).public_send(feed).stream.first]
     end
 
-    assert_equal ["/api/v4/feeds/helio/adb/stream"], @servers.last.paths
+    assert_equal ["/api/v4/feeds/helios/adb/stream"], @servers.last.paths
     assert_equal 4_294_967_295, events[:proxies].asn
     assert_equal Time.at(1_778_187_600, in: "UTC"), events[:proxies].timestamp
     assert_equal Time.at(1_778_200_137, 487, :millisecond, in: "UTC"), events[:anonymizers].timestamp
@@ -94,6 +94,71 @@ class StreamTest < SynthientTest
     assert_nil events[:helios_https].raw
     assert_equal "203.0.113.50", events[:helios_dns].domain
     assert_equal "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", events[:helios_adb].payload_hash
+    assert_equal Synthient::HeliosTransport::TCP, events[:helios_https].transport
+    assert_equal Synthient::HeliosTransport::UDP, events[:helios_dns].transport
+    assert_nil events[:helios_adb].meta
+  end
+
+  def test_helios_paths
+    %i[helios_http helios_https helios_dns helios_adb].each do |feed|
+      server = serve { |_, socket| chunked(socket, ndjson(EVENTS[feed])) }
+      new_client(server).public_send(feed).stream.to_a
+
+      assert_equal ["/api/v4/feeds/#{feed.to_s.sub("_", "/")}/stream"], server.paths
+    end
+  end
+
+  def test_adb_meta_object_or_null
+    server = serve { |_, socket| chunked(socket, ndjson(EVENTS[:helios_adb].merge("meta" => META))) }
+    meta = new_client(server).helios_adb.stream.first.meta
+
+    assert_equal "203.0.113.10", meta.proxy_ip
+    assert_equal "luminati", meta.provider
+    server = serve { |_, socket| chunked(socket, ndjson(EVENTS[:helios_adb].merge("meta" => nil))) }
+
+    assert_nil new_client(server).helios_adb.stream.first.meta
+  end
+
+  def test_helios_transport
+    %i[helios_https helios_dns].each do |feed|
+      server = serve { |_, socket| chunked(socket, ndjson(EVENTS[feed].merge("transport" => "sctp"))) }
+
+      assert_equal "sctp", new_client(server).public_send(feed).stream.first.transport
+      server = serve { |_, socket| chunked(socket, ndjson(EVENTS[feed].except("transport"))) }
+
+      assert_raises(Synthient::DecodeError) { new_client(server).public_send(feed).stream.first }
+    end
+  end
+
+  def test_tls_client_hello_new_fields
+    details = {
+      "record_version" => "TLS 1.0", "record_version_code" => 769, "handshake_version" => "TLS 1.2",
+      "handshake_version_code" => 771, "supported_version_codes" => [2570, 772, 771],
+      "alpn_hex" => %w[6832 687474702f312e31],
+      "signature_algorithms_cert" => [{ "code" => 2052, "name" => "rsa_pss_rsae_sha256" }],
+      "record_size_limit" => 16_385, "max_fragment_length" => 4, "complete" => false, "truncated" => true,
+      "transport" => "tcp"
+    }
+    server = serve { |_, socket| chunked(socket, ndjson(EVENTS[:helios_https].merge("details" => details))) }
+    hello = new_client(server).helios_https.stream.first.details
+
+    assert_equal 769, hello.record_version_code
+    assert_equal 771, hello.handshake_version_code
+    assert_equal [0x0A0A, 772, 771], hello.supported_version_codes
+    assert_equal %w[6832 687474702f312e31], hello.alpn_hex
+    assert_equal "rsa_pss_rsae_sha256", hello.signature_algorithms_cert.first.name
+    assert_equal 16_385, hello.record_size_limit
+    assert_equal 4, hello.max_fragment_length
+    refute hello.complete
+    assert hello.truncated
+    assert_equal Synthient::HeliosTransport::TCP, hello.transport
+
+    server = serve { |_, socket| chunked(socket, ndjson(EVENTS[:helios_https])) }
+    hello = new_client(server).helios_https.stream.first.details
+    fields = %i[complete truncated transport record_version_code handshake_version_code supported_version_codes alpn_hex
+                signature_algorithms_cert record_size_limit max_fragment_length]
+
+    fields.each { |field| assert_nil hello.public_send(field), field }
   end
 
   def test_https_details_may_be_null

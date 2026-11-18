@@ -108,8 +108,9 @@ module Synthient
     # Listing skips the grpc.reflection services; name one in +symbols+ to
     # fetch it.
     #
-    # @param api_key [String, nil] sent as x-api-key metadata unless blank;
-    #   by default from SYNTHIENT_API_KEY
+    # @param api_key [String, nil] sent as x-api-key metadata, which
+    #   reflection requires; by default from SYNTHIENT_API_KEY. A blank key
+    #   is not sent, and the server answers UNAUTHENTICATED.
     # @param endpoint [String] host:port, a bare host (port 443 is assumed), or
     #   a grpc:// or https:// URL
     # @param plaintext [Boolean] disables TLS, for local development servers

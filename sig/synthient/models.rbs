@@ -14,9 +14,27 @@ module Synthient
     INACTIVE: String
   end
 
+  module ExportFormat
+    CSV: String
+    MMDB: String
+    PARQUET: String
+    TAR_GZ: String
+  end
+
   module ExportKind
     DAILY: String
     HOURLY: String
+  end
+
+  module ExportVariant
+    FULL: String
+    LITE: String
+  end
+
+  module HeliosTransport
+    QUIC: String
+    TCP: String
+    UDP: String
   end
 
   module NetworkType
@@ -84,6 +102,10 @@ module Synthient
     ANONYMIZERS_FEED: String
     ANONYMIZERS_STREAM: String
     BASIC: String
+    FILE_IOCS_FEED: String
+    FILE_IOCS_STREAM: String
+    GEOLOCATION_FEED: String
+    HELIOS: String
     HONEYPOT_ADB_FEED: String
     HONEYPOT_ADB_STREAM: String
     HONEYPOT_DNS_FEED: String
@@ -98,10 +120,24 @@ module Synthient
     JA4T_STREAM: String
     JA4_FEED: String
     JA4_STREAM: String
+    NETWORK_IOCS_FEED: String
+    NETWORK_IOCS_STREAM: String
     PROXY_FEEDS: String
     PROXY_FIREHOSE: String
     TORRENTS_FEED: String
     TORRENTS_STREAM: String
+    WHOIS_FEED: String
+    WHOIS_STREAM: String
+  end
+
+  module WhoisEntity
+    ASNS: String
+    CONTACTS: String
+    DELEGATIONS: String
+    MAINTAINERS: String
+    NETWORKS: String
+    ORGANISATIONS: String
+    TRANSFERS: String
   end
 
   class ASNCount < Data
@@ -223,9 +259,32 @@ module Synthient
     attr_reader checksum: String
     attr_reader created_at: Time
     attr_reader download_path: String
-    def self.new: (id: String, kind: String, date: Date, ?hour: Integer?, size_bytes: Integer, row_count: Integer, checksum: String, created_at: Time, download_path: String) -> instance
-    def initialize: (id: String, kind: String, date: Date, ?hour: Integer?, size_bytes: Integer, row_count: Integer, checksum: String, created_at: Time, download_path: String) -> void
-    def with: (?id: String, ?kind: String, ?date: Date, ?hour: Integer?, ?size_bytes: Integer, ?row_count: Integer, ?checksum: String, ?created_at: Time, ?download_path: String) -> instance
+    attr_reader formats: Array[ExportFile]
+    attr_reader entities: Array[ExportEntity]?
+    attr_reader variant: String?
+    def self.new: (id: String, kind: String, date: Date, ?hour: Integer?, size_bytes: Integer, row_count: Integer, checksum: String, created_at: Time, download_path: String, formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> instance
+    def initialize: (id: String, kind: String, date: Date, ?hour: Integer?, size_bytes: Integer, row_count: Integer, checksum: String, created_at: Time, download_path: String, formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> void
+    def with: (?id: String, ?kind: String, ?date: Date, ?hour: Integer?, ?size_bytes: Integer, ?row_count: Integer, ?checksum: String, ?created_at: Time, ?download_path: String, ?formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> instance
+  end
+
+  class ExportEntity < Data
+    attr_reader entity: String
+    attr_reader row_count: Integer
+    attr_reader size_bytes: Integer
+    attr_reader checksum: String
+    attr_reader schema: ParquetSchema?
+    def self.new: (entity: String, row_count: Integer, size_bytes: Integer, checksum: String, ?schema: ParquetSchema?) -> instance
+    def initialize: (entity: String, row_count: Integer, size_bytes: Integer, checksum: String, ?schema: ParquetSchema?) -> void
+    def with: (?entity: String, ?row_count: Integer, ?size_bytes: Integer, ?checksum: String, ?schema: ParquetSchema?) -> instance
+  end
+
+  class ExportFile < Data
+    attr_reader format: String
+    attr_reader size_bytes: Integer
+    attr_reader checksum: String
+    def self.new: (format: String, size_bytes: Integer, checksum: String) -> instance
+    def initialize: (format: String, size_bytes: Integer, checksum: String) -> void
+    def with: (?format: String, ?size_bytes: Integer, ?checksum: String) -> instance
   end
 
   class ExportMeta < Data
@@ -240,9 +299,12 @@ module Synthient
     attr_reader checksum: String
     attr_reader created_at: Time
     attr_reader schema: ParquetSchema
-    def self.new: (id: String, stream: String, kind: String, format: String, date: Time, ?hour: Integer?, rows: Integer, size: Integer, checksum: String, created_at: Time, schema: ParquetSchema) -> instance
-    def initialize: (id: String, stream: String, kind: String, format: String, date: Time, ?hour: Integer?, rows: Integer, size: Integer, checksum: String, created_at: Time, schema: ParquetSchema) -> void
-    def with: (?id: String, ?stream: String, ?kind: String, ?format: String, ?date: Time, ?hour: Integer?, ?rows: Integer, ?size: Integer, ?checksum: String, ?created_at: Time, ?schema: ParquetSchema) -> instance
+    attr_reader formats: Array[ExportFile]
+    attr_reader entities: Array[ExportEntity]?
+    attr_reader variant: String?
+    def self.new: (id: String, stream: String, kind: String, format: String, date: Time, ?hour: Integer?, rows: Integer, size: Integer, checksum: String, created_at: Time, schema: ParquetSchema, formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> instance
+    def initialize: (id: String, stream: String, kind: String, format: String, date: Time, ?hour: Integer?, rows: Integer, size: Integer, checksum: String, created_at: Time, schema: ParquetSchema, formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> void
+    def with: (?id: String, ?stream: String, ?kind: String, ?format: String, ?date: Time, ?hour: Integer?, ?rows: Integer, ?size: Integer, ?checksum: String, ?created_at: Time, ?schema: ParquetSchema, ?formats: Array[ExportFile], ?entities: Array[ExportEntity]?, ?variant: String?) -> instance
   end
 
   class ExportPage < Data
@@ -252,6 +314,25 @@ module Synthient
     def self.new: (stream: String, exports: Array[Export], ?next_cursor: String?) -> instance
     def initialize: (stream: String, exports: Array[Export], ?next_cursor: String?) -> void
     def with: (?stream: String, ?exports: Array[Export], ?next_cursor: String?) -> instance
+  end
+
+  class ExportVolume < Data
+    attr_reader stream: String
+    attr_reader days: Array[ExportVolumeDay]
+    def self.new: (stream: String, days: Array[ExportVolumeDay]) -> instance
+    def initialize: (stream: String, days: Array[ExportVolumeDay]) -> void
+    def with: (?stream: String, ?days: Array[ExportVolumeDay]) -> instance
+  end
+
+  class ExportVolumeDay < Data
+    attr_reader date: Date
+    attr_reader kind: String
+    attr_reader snapshots: Integer
+    attr_reader row_count: Integer
+    attr_reader size_bytes: Integer
+    def self.new: (date: Date, kind: String, snapshots: Integer, row_count: Integer, size_bytes: Integer) -> instance
+    def initialize: (date: Date, kind: String, snapshots: Integer, row_count: Integer, size_bytes: Integer) -> void
+    def with: (?date: Date, ?kind: String, ?snapshots: Integer, ?row_count: Integer, ?size_bytes: Integer) -> instance
   end
 
   class HTTPRequestDetails < Data
@@ -269,9 +350,10 @@ module Synthient
     attr_reader sequential_id: Integer
     attr_reader command: String
     attr_reader payload_hash: String
-    def self.new: (session: String, sequential_id: Integer, command: String, payload_hash: String) -> instance
-    def initialize: (session: String, sequential_id: Integer, command: String, payload_hash: String) -> void
-    def with: (?session: String, ?sequential_id: Integer, ?command: String, ?payload_hash: String) -> instance
+    attr_reader meta: HeliosMeta?
+    def self.new: (session: String, sequential_id: Integer, command: String, payload_hash: String, ?meta: HeliosMeta?) -> instance
+    def initialize: (session: String, sequential_id: Integer, command: String, payload_hash: String, ?meta: HeliosMeta?) -> void
+    def with: (?session: String, ?sequential_id: Integer, ?command: String, ?payload_hash: String, ?meta: HeliosMeta?) -> instance
   end
 
   class HeliosDNSEvent < Data
@@ -281,9 +363,10 @@ module Synthient
     attr_reader port: Integer
     attr_reader protocol: String
     attr_reader meta: HeliosMeta
-    def self.new: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta) -> instance
-    def initialize: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta) -> void
-    def with: (?timestamp: Time, ?tunnel_id: Integer, ?domain: String, ?port: Integer, ?protocol: String, ?meta: HeliosMeta) -> instance
+    attr_reader transport: String
+    def self.new: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, transport: String) -> instance
+    def initialize: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, transport: String) -> void
+    def with: (?timestamp: Time, ?tunnel_id: Integer, ?domain: String, ?port: Integer, ?protocol: String, ?meta: HeliosMeta, ?transport: String) -> instance
   end
 
   class HeliosHTTPEvent < Data
@@ -309,9 +392,10 @@ module Synthient
     attr_reader meta: HeliosMeta
     attr_reader details: TLSClientHello?
     attr_reader raw: String?
-    def self.new: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?) -> instance
-    def initialize: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?) -> void
-    def with: (?timestamp: Time, ?tunnel_id: Integer, ?domain: String, ?port: Integer, ?protocol: String, ?meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?) -> instance
+    attr_reader transport: String
+    def self.new: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?, transport: String) -> instance
+    def initialize: (timestamp: Time, tunnel_id: Integer, domain: String, port: Integer, protocol: String, meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?, transport: String) -> void
+    def with: (?timestamp: Time, ?tunnel_id: Integer, ?domain: String, ?port: Integer, ?protocol: String, ?meta: HeliosMeta, ?details: TLSClientHello?, ?raw: String?, ?transport: String) -> instance
   end
 
   class HeliosMeta < Data
@@ -480,9 +564,19 @@ module Synthient
     attr_reader renegotiation_info: bool?
     attr_reader signed_certificate_timestamps: bool?
     attr_reader status_request: bool?
-    def self.new: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?) -> instance
-    def initialize: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?) -> void
-    def with: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?) -> instance
+    attr_reader complete: bool?
+    attr_reader truncated: bool?
+    attr_reader transport: String?
+    attr_reader record_version_code: Integer?
+    attr_reader handshake_version_code: Integer?
+    attr_reader supported_version_codes: Array[Integer]?
+    attr_reader alpn_hex: Array[String]?
+    attr_reader signature_algorithms_cert: Array[TLSCodeName]?
+    attr_reader record_size_limit: Integer?
+    attr_reader max_fragment_length: Integer?
+    def self.new: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?, ?complete: bool?, ?truncated: bool?, ?transport: String?, ?record_version_code: Integer?, ?handshake_version_code: Integer?, ?supported_version_codes: Array[Integer]?, ?alpn_hex: Array[String]?, ?signature_algorithms_cert: Array[TLSCodeName]?, ?record_size_limit: Integer?, ?max_fragment_length: Integer?) -> instance
+    def initialize: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?, ?complete: bool?, ?truncated: bool?, ?transport: String?, ?record_version_code: Integer?, ?handshake_version_code: Integer?, ?supported_version_codes: Array[Integer]?, ?alpn_hex: Array[String]?, ?signature_algorithms_cert: Array[TLSCodeName]?, ?record_size_limit: Integer?, ?max_fragment_length: Integer?) -> void
+    def with: (?record_version: String?, ?handshake_version: String?, ?client_random: String?, ?session_id: String?, ?session_id_length: Integer?, ?cipher_suites: Array[TLSCodeName]?, ?compression_methods: Array[Integer]?, ?extensions: Array[TLSExtension]?, ?sni: String?, ?alpn: Array[String]?, ?supported_versions: Array[String]?, ?supported_groups: Array[TLSCodeName]?, ?signature_algorithms: Array[TLSCodeName]?, ?ec_point_formats: Array[String]?, ?key_share_groups: Array[String]?, ?psk_key_exchange_modes: Array[String]?, ?compress_certificate: Array[String]?, ?has_grease: bool?, ?application_settings: bool?, ?delegated_credentials: bool?, ?encrypt_then_mac: bool?, ?extended_master_secret: bool?, ?post_handshake_auth: bool?, ?renegotiation_info: bool?, ?signed_certificate_timestamps: bool?, ?status_request: bool?, ?complete: bool?, ?truncated: bool?, ?transport: String?, ?record_version_code: Integer?, ?handshake_version_code: Integer?, ?supported_version_codes: Array[Integer]?, ?alpn_hex: Array[String]?, ?signature_algorithms_cert: Array[TLSCodeName]?, ?record_size_limit: Integer?, ?max_fragment_length: Integer?) -> instance
   end
 
   class TLSCodeName < Data

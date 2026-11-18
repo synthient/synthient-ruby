@@ -16,9 +16,20 @@ class AccountTest < SynthientTest
   end
 
   def test_account_without_api_key
-    server = serve { json(200, ACCOUNT.except("api_key")) }
+    [ACCOUNT.except("api_key"), ACCOUNT.merge("api_key" => nil)].each do |account|
+      server = serve { json(200, account) }
 
-    assert_nil new_client(server).account.api_key
+      assert_nil new_client(server).account.api_key
+    end
+  end
+
+  def test_new_scopes
+    scopes = %w[GEOLOCATION_FEED WHOIS_FEED WHOIS_STREAM NETWORK_IOCS_FEED NETWORK_IOCS_STREAM FILE_IOCS_FEED
+                FILE_IOCS_STREAM HELIOS]
+    server = serve { json(200, ACCOUNT.merge("scopes" => scopes)) }
+
+    assert_equal scopes, new_client(server).account.scopes
+    assert_equal(scopes, scopes.map { |scope| Synthient::Scope.const_get(scope) })
   end
 
   def test_account_rejects_invalid_created_at

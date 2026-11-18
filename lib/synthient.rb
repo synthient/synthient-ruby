@@ -9,9 +9,8 @@ require "time"
 require "uri"
 require "zlib"
 
-# The official Ruby client for the Synthient API: IP and domain intelligence,
-# account details, and real-time and bulk data feeds. Start with
-# Synthient::Client.
+# The official Ruby client for the Synthient API: IP intelligence, account
+# details, and real-time and bulk data feeds. Start with Synthient::Client.
 module Synthient
   DEFAULT_BASE_URL = "https://api.synthient.com/api/v4"
 end
@@ -26,5 +25,7 @@ require_relative "synthient/models/account"
 require_relative "synthient/models/export"
 require_relative "synthient/models/events"
 require_relative "synthient/transport"
+require_relative "synthient/export_requests"
 require_relative "synthient/feed"
+require_relative "synthient/dataset"
 require_relative "synthient/client"

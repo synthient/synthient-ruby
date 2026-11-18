@@ -75,6 +75,25 @@ class DownloadTest < SynthientTest
     assert_equal "expected a redirect to the export, got status 200", error.message
   end
 
+  def test_not_modified_is_not_a_redirect
+    server = serve { [304, { "etag" => 'W/"ab12"' }, ""] }
+    error = assert_raises(Synthient::DecodeError) { new_client(server).proxies.download_url("latest") }
+
+    assert_equal "expected a redirect to the export, got status 304", error.message
+    assert_equal 1, server.requests.size
+  end
+
+  def test_download_variant
+    store, origin = storage { [200, {}, PARQUET] }
+    server = api("#{origin}#{SIGNED_PATH}")
+    data = "".b
+    new_client(server).proxies.download("2026-05-07/7", variant: Synthient::ExportVariant::LITE) { |chunk| data << chunk }
+
+    assert_equal PARQUET, data
+    assert_equal ["/api/v4/feeds/proxies/export/2026-05-07/7?variant=lite"], server.paths
+    assert_equal [SIGNED_PATH], store.paths
+  end
+
   def test_daily_export_in_progress
     server = serve { problem(404, { "title" => "Export not ready" }, "retry-after" => "120") }
     error = assert_raises(Synthient::APIError) { new_client(server).proxies.download("2026-05-07") { nil } }

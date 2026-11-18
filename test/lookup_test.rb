@@ -109,6 +109,8 @@ class LookupTest < SynthientTest
     assert_raises(Synthient::DecodeError) { new_client(server).lookup_ips(["8.8.8.8"]) }
   end
 
+  # Domain lookup is deprecated. These tests cover it until the next major
+  # version removes it.
   def test_lookup_domain
     domain = {
       "domain" => "example.com", "status" => "active",

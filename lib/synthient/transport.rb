@@ -85,10 +85,11 @@ module Synthient
       end
     end
 
-    def redirect_location(path)
-      execute("GET", path, policy: :transient) do |response|
+    def redirect_location(path, query: nil)
+      execute("GET", path, policy: :transient, query:) do |response|
         raise_api_error(response) if response.code.to_i >= 400
-        unless response.is_a?(Net::HTTPRedirection)
+        # Net::HTTP counts a 304 as a redirection, but it has no location.
+        if !response.is_a?(Net::HTTPRedirection) || response.is_a?(Net::HTTPNotModified)
           raise DecodeError, "expected a redirect to the export, got status #{response.code}"
         end
 

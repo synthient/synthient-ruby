@@ -8,7 +8,7 @@ module Synthient
   #
   # @api private
   module Model
-    Field = Data.define(:name, :wire, :type, :required)
+    Field = Data.define(:name, :wire, :type, :required, :null_as)
 
     class Builder
       attr_reader :fields
@@ -17,12 +17,14 @@ module Synthient
         @fields = []
       end
 
-      def required(name, type, wire: name.to_s)
-        @fields << Field.new(name:, wire:, type:, required: true)
+      # +null_as+ is decoded in place of a null or missing value, for a
+      # required field the API has been seen to send as null.
+      def required(name, type, wire: name.to_s, null_as: nil)
+        @fields << Field.new(name:, wire:, type:, required: true, null_as:)
       end
 
       def optional(name, type, wire: name.to_s)
-        @fields << Field.new(name:, wire:, type:, required: false)
+        @fields << Field.new(name:, wire:, type:, required: false, null_as: nil)
       end
     end
 
@@ -42,6 +44,7 @@ module Synthient
 
       attrs = model.fields.to_h do |field|
         value = object[field.wire]
+        value = field.null_as if value.nil?
         field_path = "#{path}.#{field.wire}"
         raise DecodeError, "#{field_path} is required" if value.nil? && field.required
 

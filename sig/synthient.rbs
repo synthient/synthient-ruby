@@ -63,29 +63,46 @@ module Synthient
     attr_reader helios_https: Feed[HeliosHTTPSEvent]
     attr_reader helios_dns: Feed[HeliosDNSEvent]
     attr_reader helios_adb: Feed[HeliosADBEvent]
+    attr_reader geolocation: Dataset
+    attr_reader whois: Dataset
 
     def initialize: (?api_key: String?, ?base_url: String, ?max_retries: Integer, ?timeout: Numeric,
                      ?open_timeout: Numeric, ?user_agent: String?, ?response_hook: _ResponseHook?) -> void
     def lookup_ip: (String | IPAddr ip) -> IPInfo
     def lookup_ips: (Enumerable[String | IPAddr] ips) -> Array[IPInfo]
+    %a{deprecated: Domain lookup was removed from the Synthient API and will stop working when the endpoint is turned off. It will be removed in the next major version.}
     def lookup_domain: (String domain, ?limit: Integer?) -> DomainInfo
     def account: () -> Account
     def health: () -> nil
     def close: () -> nil
   end
 
+  type export_day = String | Date
+
   class Feed[E]
     type export_id = String | Date | Time
 
     def stream: () { (E event) -> void } -> nil
               | () -> Enumerator[E, nil]
-    def list_exports: (?limit: Integer?, ?cursor: String?) -> ExportPage
-    def each_export: (?limit: Integer?, ?cursor: String?) { (Export export) -> void } -> nil
-                   | (?limit: Integer?, ?cursor: String?) -> Enumerator[Export, nil]
-    def export_meta: (export_id export) -> ExportMeta
-    def download_url: (export_id export) -> URI::HTTP
-    def download: (export_id export) { (String chunk) -> void } -> nil
-                | (export_id export) -> Enumerator[String, nil]
+    def list_exports: (?limit: Integer?, ?cursor: String?, ?day: export_day?, ?variant: String?) -> ExportPage
+    def each_export: (?limit: Integer?, ?cursor: String?, ?day: export_day?, ?variant: String?) { (Export export) -> void } -> nil
+                   | (?limit: Integer?, ?cursor: String?, ?day: export_day?, ?variant: String?) -> Enumerator[Export, nil]
+    def export_volume: (?days: Integer?) -> ExportVolume
+    def export_meta: (export_id export, ?variant: String?) -> ExportMeta
+    def download_url: (export_id export, ?variant: String?) -> URI::HTTP
+    def download: (export_id export, ?variant: String?) { (String chunk) -> void } -> nil
+                | (export_id export, ?variant: String?) -> Enumerator[String, nil]
+  end
+
+  class Dataset
+    def list_exports: (?limit: Integer?, ?cursor: String?, ?day: export_day?) -> ExportPage
+    def each_export: (?limit: Integer?, ?cursor: String?, ?day: export_day?) { (Export export) -> void } -> nil
+                   | (?limit: Integer?, ?cursor: String?, ?day: export_day?) -> Enumerator[Export, nil]
+    def export_volume: (?days: Integer?) -> ExportVolume
+    def export_meta: (export_day export, ?format: String?) -> ExportMeta
+    def download_url: (export_day export, ?format: String?) -> URI::HTTP
+    def download: (export_day export, ?format: String?) { (String chunk) -> void } -> nil
+                | (export_day export, ?format: String?) -> Enumerator[String, nil]
   end
 
   module GRPCSchema

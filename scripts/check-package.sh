@@ -59,4 +59,8 @@ steep check
 echo 'Synthient::Client.new.lookup_ip("8.8.8.8").network.asn' > examples/nil_unsafe.rb
 output="$(steep check 2>&1 || true)"
 grep -q "Ruby::NoMethod" <<<"$output" || { echo "steep accepted a nil-unsafe call against the installed signatures: $output"; exit 1; }
+rm examples/nil_unsafe.rb
+echo 'Synthient::Client.new.lookup_domain("example.com")' > examples/deprecated.rb
+output="$(steep check 2>&1 || true)"
+grep -q "Ruby::DeprecatedReference" <<<"$output" || { echo "steep did not flag a deprecated method: $output"; exit 1; }
 echo "steep consumer: ok"

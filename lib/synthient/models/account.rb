@@ -31,6 +31,22 @@ module Synthient
     JA4_STREAM = "JA4_STREAM"
     JA4T_FEED = "JA4T_FEED"
     JA4T_STREAM = "JA4T_STREAM"
+    GEOLOCATION_FEED = "GEOLOCATION_FEED"
+    WHOIS_FEED = "WHOIS_FEED"
+    # Reserved: no operation accepts it yet.
+    WHOIS_STREAM = "WHOIS_STREAM"
+    # Reserved for an upcoming network IOC feed.
+    NETWORK_IOCS_FEED = "NETWORK_IOCS_FEED"
+    # Reserved for an upcoming network IOC feed.
+    NETWORK_IOCS_STREAM = "NETWORK_IOCS_STREAM"
+    # Reserved for an upcoming file IOC feed.
+    FILE_IOCS_FEED = "FILE_IOCS_FEED"
+    # Reserved for an upcoming file IOC feed.
+    FILE_IOCS_STREAM = "FILE_IOCS_STREAM"
+    # A dashboard permission that authorizes no API operation.
+    HELIOS = "HELIOS"
+    # @deprecated The API no longer lists this scope, and it never authorized
+    #   an API operation. It will be removed in the next major version.
     ADMIN_PROXIES = "ADMIN_PROXIES"
   end
 
@@ -55,6 +71,7 @@ module Synthient
   end
 
   # The account that owns the API key. +scopes+ holds Scope values.
+  # +api_key+ is nil if the key was deleted while the request was in flight.
   Account = Model.define do
     required :email, :string
     required :first_name, :string

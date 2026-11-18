@@ -15,16 +15,6 @@ class ConformanceTest < SynthientTest
     "IntelligenceInfo" => Synthient::Intelligence,
     "ProviderEntry" => Synthient::Provider,
     "DeviceInfo" => Synthient::Device,
-    "DomainLookupResponse" => Synthient::DomainInfo,
-    "Stats" => Synthient::DomainStats,
-    "UniqueIPsBlock" => Synthient::UniqueIPs,
-    "TimeSeriesEntry" => Synthient::TimeSeriesPoint,
-    "ASNEntry" => Synthient::ASNCount,
-    "SubdomainEntry" => Synthient::SubdomainCount,
-    "PortEntry" => Synthient::PortCount,
-    "CountryEntry" => Synthient::CountryCount,
-    "ActivityStatsBlock" => Synthient::ActivityStats,
-    "RecentEvent" => Synthient::DomainEvent,
     "AccountInfoResponse" => Synthient::Account,
     "Organization" => Synthient::Organization,
     "LookupQuota" => Synthient::LookupQuota,
@@ -32,6 +22,10 @@ class ConformanceTest < SynthientTest
     "ExportListResponse" => Synthient::ExportPage,
     "ExportListItem" => Synthient::Export,
     "ExportMetaResponse" => Synthient::ExportMeta,
+    "ExportFormatFile" => Synthient::ExportFile,
+    "ExportEntityFile" => Synthient::ExportEntity,
+    "ExportDailyResponse" => Synthient::ExportVolume,
+    "ExportDailyItem" => Synthient::ExportVolumeDay,
     "Schema" => Synthient::ParquetSchema,
     "ProjectedColumn" => Synthient::ParquetColumn,
     "ProxyStreamEntry" => Synthient::ProxyEvent,
@@ -60,17 +54,29 @@ class ConformanceTest < SynthientTest
   VALUE_SETS = {
     "NetworkInfo.type" => Synthient::NetworkType,
     "DeviceInfo.os" => Synthient::OS,
-    "DomainLookupResponse.status" => Synthient::DomainStatus,
-    "ActivityStatsBlock.cadence" => Synthient::Cadence,
     "AccountInfoResponse.scopes" => Synthient::Scope,
     "Organization.relation" => Synthient::Relation,
     "ExportListItem.kind" => Synthient::ExportKind,
     "ExportMetaResponse.kind" => Synthient::ExportKind,
+    "ExportDailyItem.kind" => Synthient::ExportKind,
+    "ExportMetaResponse.format" => Synthient::ExportFormat,
+    "ExportFormatFile.format" => Synthient::ExportFormat,
+    "ExportEntityFile.entity" => Synthient::WhoisEntity,
     "ProjectedColumn.type" => Synthient::ParquetType,
     "ProxyStreamEntry.type" => Synthient::ProxyType,
     "AnonymizerStreamEntry.type" => Synthient::ProxyType,
-    "JA4TStreamEntry.type" => Synthient::ProxyType
+    "JA4TStreamEntry.type" => Synthient::ProxyType,
+    "HoneypotHTTPSStreamEntry.transport" => Synthient::HeliosTransport,
+    "HoneypotDNSStreamEntry.transport" => Synthient::HeliosTransport
   }.freeze
+
+  # Deprecated constants kept until the next major version, though the spec
+  # no longer lists their values.
+  DEPRECATED_VALUES = { "AccountInfoResponse.scopes" => %w[ADMIN_PROXIES] }.freeze
+
+  # Deprecated operations the client keeps until the next major version,
+  # though the spec no longer lists them.
+  DEPRECATED_OPERATIONS = { "GET /lookup/domain/{domain}" => "Client#lookup_domain" }.freeze
 
   UNIX_TIME_FIELDS = %w[timestamp last_seen created_at date].freeze
 
@@ -85,7 +91,9 @@ class ConformanceTest < SynthientTest
     assert_empty @enums.keys - VALUE_SETS.keys, "spec enums without a value set"
     assert_empty VALUE_SETS.keys - @enums.keys, "value sets without a spec enum"
     VALUE_SETS.each do |where, set|
-      assert_equal @enums[where], set.constants.map { |name| set.const_get(name) }.sort, "#{where} enum values"
+      values = set.constants.map { |name| set.const_get(name) } - DEPRECATED_VALUES.fetch(where, [])
+
+      assert_equal @enums[where], values.sort, "#{where} enum values"
     end
   end
 
@@ -96,10 +104,11 @@ class ConformanceTest < SynthientTest
   end
 
   def test_client_covers_every_operation
-    expected = SPEC["paths"].flat_map do |path, operations|
+    in_spec = SPEC["paths"].flat_map do |path, operations|
       (operations.keys & %w[get post put patch delete]).map { |verb| "#{verb.upcase} #{path}" }
     end
-    templates = SPEC["paths"].keys.map do |path|
+    expected = in_spec + DEPRECATED_OPERATIONS.keys
+    templates = expected.map { |operation| operation.split.last }.uniq.map do |path|
       [path, Regexp.new("\\A/api/v4#{path.gsub(/\{[^}]+\}/, "[^/]+")}\\z")]
     end
     server = serve { json(500, {}) }
@@ -112,7 +121,12 @@ class ConformanceTest < SynthientTest
       feed = client.public_send(name)
       calls.push(-> { feed.stream.to_a }, -> { feed.list_exports }, -> { feed.export_meta("2026-05-07") },
                  -> { feed.export_meta("2026-05-07/7") }, -> { feed.download_url("2026-05-07") },
-                 -> { feed.download_url("2026-05-07/7") })
+                 -> { feed.download_url("2026-05-07/7") }, -> { feed.export_volume })
+    end
+    %i[geolocation whois].each do |name|
+      dataset = client.public_send(name)
+      calls.push(-> { dataset.list_exports }, -> { dataset.export_meta("2026-05-07") },
+                 -> { dataset.download_url("2026-05-07") }, -> { dataset.export_volume })
     end
     calls.each do |call|
       call.call
@@ -126,7 +140,7 @@ class ConformanceTest < SynthientTest
     end
 
     assert_equal expected.sort, covered.uniq.sort
-    assert_equal 53, expected.size
+    assert_equal 68, in_spec.size
   end
 
   private
@@ -141,8 +155,8 @@ class ConformanceTest < SynthientTest
       field = fields.fetch(wire)
       where = "#{path}.#{wire}"
 
-      assert_equal required.include?(wire), field.required, "#{where} required"
-      refute field.required && property["nullable"], "#{where} is nullable, so it must be optional"
+      # A required but nullable field is optional, because nil stands for both.
+      assert_equal required.include?(wire) && !property["nullable"], field.required, "#{where} required"
       check_type(where, property, field.type)
       values = %w[enum x-extensible-enum].sum([]) { |key| property[key] || property.dig("items", key) || [] }
       @enums[where] = values.sort if values.size >= 2

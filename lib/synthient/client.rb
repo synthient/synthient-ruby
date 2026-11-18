@@ -38,6 +38,10 @@ module Synthient
     attr_reader :helios_dns
     # @return [Feed<HeliosADBEvent>] ADB shell commands captured by Helios honeypots
     attr_reader :helios_adb
+    # @return [Dataset] daily IP geolocation and network data, needs GEOLOCATION_FEED
+    attr_reader :geolocation
+    # @return [Dataset] daily registry WHOIS data, needs WHOIS_FEED
+    attr_reader :whois
 
     # Makes no network requests.
     #
@@ -83,10 +87,12 @@ module Synthient
       @anonymizers = Feed.new(@transport, "/feeds/anonymizers", AnonymizerEvent)
       @torrents = Feed.new(@transport, "/feeds/torrents", TorrentEvent)
       @ja4t = Feed.new(@transport, "/feeds/ja4t", JA4TEvent)
-      @helios_http = Feed.new(@transport, "/feeds/helio/http", HeliosHTTPEvent)
-      @helios_https = Feed.new(@transport, "/feeds/helio/https", HeliosHTTPSEvent)
-      @helios_dns = Feed.new(@transport, "/feeds/helio/dns", HeliosDNSEvent)
-      @helios_adb = Feed.new(@transport, "/feeds/helio/adb", HeliosADBEvent)
+      @helios_http = Feed.new(@transport, "/feeds/helios/http", HeliosHTTPEvent)
+      @helios_https = Feed.new(@transport, "/feeds/helios/https", HeliosHTTPSEvent)
+      @helios_dns = Feed.new(@transport, "/feeds/helios/dns", HeliosDNSEvent)
+      @helios_adb = Feed.new(@transport, "/feeds/helios/adb", HeliosADBEvent)
+      @geolocation = Dataset.new(@transport, "/feeds/geolocation")
+      @whois = Dataset.new(@transport, "/feeds/whois")
     end
 
     # Costs one lookup credit; failed lookups are free.
@@ -101,9 +107,12 @@ module Synthient
 
     # Looks up to 1000 addresses in one request. The API drops duplicate,
     # private, and reserved addresses, so match results by +ip+, not position.
-    # An invalid address raises ArgumentError before the request. Costs
-    # ceil(n * 0.9) credits for n distinct usable addresses, and nothing if the
-    # request fails. An empty list returns [] without a request.
+    # The plan sets the batch limit: 100 on Free, 500 on Starter, and 1000 on
+    # Premium and Enterprise, and a larger batch raises a 422 APIError. More
+    # than 1000 addresses, or an invalid one, raises ArgumentError before the
+    # request. Costs ceil(n * 0.9) credits for n distinct usable addresses,
+    # and nothing if the request fails. An empty list returns [] without a
+    # request.
     #
     # @param ips [Enumerable<String, IPAddr>]
     # @return [Array<IPInfo>]
@@ -126,6 +135,9 @@ module Synthient
     # Looks up the honeypot traffic Synthient has observed for a domain. Costs
     # one lookup credit.
     #
+    # @deprecated Domain lookup was removed from the Synthient API and will
+    #   stop working when the endpoint is turned off. It will be removed in the
+    #   next major version.
     # @param limit [Integer, nil] how many recent events to return; the API defaults to 50 and clamps values above 1000
     # @return [DomainInfo]
     def lookup_domain(domain, limit: nil)

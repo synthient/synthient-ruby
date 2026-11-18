@@ -13,7 +13,7 @@
 
 # synthient-ruby
 
-The `synthient` gem is the official Ruby SDK for the [Synthient API](https://docs.synthient.com): IP and domain intelligence, account details, and real-time and bulk data feeds.
+The `synthient` gem is the official Ruby SDK for the [Synthient API](https://docs.synthient.com): IP intelligence, account details, and real-time and bulk data feeds.
 
 [![Gem Version](https://img.shields.io/gem/v/synthient)](https://rubygems.org/gems/synthient)
 [![test](https://github.com/synthient/synthient-ruby/actions/workflows/test.yml/badge.svg)](https://github.com/synthient/synthient-ruby/actions/workflows/test.yml)
@@ -72,7 +72,7 @@ Ruby 3.3 or later. The gem uses only Ruby's standard library. It ships RBS signa
 
 ## API Keys
 
-Every request needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one, [contact us](mailto:contact@synthient.com). A key's scopes decide what it can call: `BASIC` covers the lookups and `account`, and each feed has its own scopes, listed under [Feeds](#feeds).
+Every request needs a Synthient API key. Keys are issued from the Synthient dashboard; if you don't have one, [contact us](mailto:contact@synthient.com). A key's scopes decide what it can call: `BASIC` covers the lookups and `account`, and each feed and dataset has its own scopes, listed under [Feeds](#feeds) and [Datasets](#datasets).
 
 If a request fails even though you are sending a key:
 
@@ -122,24 +122,12 @@ A client keeps its connections open and is safe to share between threads, so cre
 
 ### Look up many IP addresses
 
-Look up as many as 1000 addresses in one request for `ceil(n * 0.9)` credits. Private and reserved addresses are skipped and duplicates are merged, so match results by `ip`.
+Look up a batch of addresses in one request for `ceil(n * 0.9)` credits. The batch cap depends on your plan: 100 on Free, 500 on Starter, and 1000 on Premium and Enterprise, and the API rejects a larger batch with a 422. Private and reserved addresses are skipped and duplicates are merged, so match results by `ip`.
 
 ```ruby
 results = client.lookup_ips(["8.8.8.8", "1.1.1.1"])
 results.each do |result|
   puts "#{result.ip} #{result.intelligence&.risk_score}"
-end
-```
-
-### Look up a domain
-
-Get the honeypot traffic observed for a domain and its most recent events. Each lookup costs one credit.
-
-```ruby
-domain = client.lookup_domain("example.com", limit: 10)
-puts "#{domain.status} #{domain.stats.events_24h}"
-domain.recent_events.each do |event|
-  puts "#{event.timestamp.iso8601} #{event.target_subdomain} #{event.port}"
 end
 ```
 
@@ -160,8 +148,7 @@ puts "#{account.organization.name} #{account.scopes.join(", ")} #{account.lookup
 ### [Client](https://rubydoc.info/gems/synthient/Synthient/Client)
 
 - [`lookup_ip`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_ip-instance_method) - Look up an IPv4 or IPv6 address
-- [`lookup_ips`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_ips-instance_method) - Look up as many as 1000 addresses in one request
-- [`lookup_domain`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_domain-instance_method) - Look up the honeypot traffic observed for a domain
+- [`lookup_ips`](https://rubydoc.info/gems/synthient/Synthient/Client#lookup_ips-instance_method) - Look up a batch of addresses in one request
 - [`account`](https://rubydoc.info/gems/synthient/Synthient/Client#account-instance_method) - Get the key's account, scopes, and remaining lookup credits
 - [`health`](https://rubydoc.info/gems/synthient/Synthient/Client#health-instance_method) - Check that the API and its dependencies are healthy
 
@@ -172,6 +159,7 @@ Each feed is a method of the client, such as `client.proxies`, and has the same 
 - [`stream`](https://rubydoc.info/gems/synthient/Synthient/Feed#stream-instance_method) - Yield the feed's real-time events
 - [`list_exports`](https://rubydoc.info/gems/synthient/Synthient/Feed#list_exports-instance_method) - List one page of the feed's Parquet exports, newest first
 - [`each_export`](https://rubydoc.info/gems/synthient/Synthient/Feed#each_export-instance_method) - Yield every export, fetching pages as needed
+- [`export_volume`](https://rubydoc.info/gems/synthient/Synthient/Feed#export_volume-instance_method) - Get the rows and bytes the feed exported per UTC day
 - [`export_meta`](https://rubydoc.info/gems/synthient/Synthient/Feed#export_meta-instance_method) - Get an export's checksum, size, row count, and Parquet schema
 - [`download`](https://rubydoc.info/gems/synthient/Synthient/Feed#download-instance_method) - Download an export's Parquet file in chunks
 - [`download_url`](https://rubydoc.info/gems/synthient/Synthient/Feed#download_url-instance_method) - Get a presigned URL for an export's Parquet file, valid for 24 hours
@@ -181,11 +169,26 @@ Each feed is a method of the client, such as `client.proxies`, and has the same 
 | `proxies`      | Residential, mobile, and datacenter proxies   | `ProxyEvent`       | `PROXY_FIREHOSE`        | `PROXY_FEEDS`         |
 | `anonymizers`  | VPN and anonymizer IP ranges                  | `AnonymizerEvent`  | `ANONYMIZERS_STREAM`    | `ANONYMIZERS_FEED`    |
 | `torrents`     | BitTorrent DHT and tracker peers              | `TorrentEvent`     | `TORRENTS_STREAM`       | `TORRENTS_FEED`       |
-| `ja4t`         | JA4T TCP fingerprints                         | `JA4TEvent`        | `JA4T_STREAM`           | `JA4T_FEED`           |
 | `helios_http`  | Helios honeypot HTTP requests                 | `HeliosHTTPEvent`  | `HONEYPOT_HTTP_STREAM`  | `HONEYPOT_HTTP_FEED`  |
 | `helios_https` | Helios honeypot TLS ClientHellos              | `HeliosHTTPSEvent` | `HONEYPOT_HTTPS_STREAM` | `HONEYPOT_HTTPS_FEED` |
 | `helios_dns`   | Helios honeypot tunnel destinations           | `HeliosDNSEvent`   | `HONEYPOT_DNS_STREAM`   | `HONEYPOT_DNS_FEED`   |
 | `helios_adb`   | Helios honeypot Android Debug Bridge commands | `HeliosADBEvent`   | `HONEYPOT_ADB_STREAM`   | `HONEYPOT_ADB_FEED`   |
+
+### [Datasets](https://rubydoc.info/gems/synthient/Synthient/Dataset)
+
+Datasets have one export per UTC day and no stream. Each dataset is a method of the client, such as `client.geolocation`, and has the same methods:
+
+- [`list_exports`](https://rubydoc.info/gems/synthient/Synthient/Dataset#list_exports-instance_method) - List one page of the dataset's daily exports, newest first
+- [`each_export`](https://rubydoc.info/gems/synthient/Synthient/Dataset#each_export-instance_method) - Yield every export, fetching pages as needed
+- [`export_volume`](https://rubydoc.info/gems/synthient/Synthient/Dataset#export_volume-instance_method) - Get the rows and bytes the dataset exported per UTC day
+- [`export_meta`](https://rubydoc.info/gems/synthient/Synthient/Dataset#export_meta-instance_method) - Get a file's checksum, size, and row count, and list every file of the day
+- [`download`](https://rubydoc.info/gems/synthient/Synthient/Dataset#download-instance_method) - Download a day's file in the format you choose, in chunks
+- [`download_url`](https://rubydoc.info/gems/synthient/Synthient/Dataset#download_url-instance_method) - Get a presigned URL for a day's file, valid for 24 hours
+
+| Method        | Data                                    | Scope              | Formats                                   |
+| ------------- | --------------------------------------- | ------------------ | ----------------------------------------- |
+| `geolocation` | IP geolocation, network, and risk data  | `GEOLOCATION_FEED` | `parquet` (default), `csv` (gzip), `mmdb` |
+| `whois`       | WHOIS registry records as Parquet files | `WHOIS_FEED`       | `tar.gz`                                  |
 
 </details>
 
@@ -210,7 +213,7 @@ rescue Synthient::Error => e
 end
 ```
 
-- The server closes each stream after up to 30 minutes. `stream` then returns normally, and the loop reconnects at once.
+- The server can close a stream at any time, such as during a deploy. `stream` then returns without an error, and the loop reconnects at once.
 - A 401 or 403 stops the loop, because reconnecting can't fix a rejected key or a missing scope.
 - Any other failure raises a `Synthient::Error`, and the loop waits 2 seconds before reconnecting.
 - Events sent while disconnected are missed. The API has no resume cursor.
@@ -238,11 +241,19 @@ end
 
 Without a block, it returns an `Enumerator`, so `client.proxies.each_export.first(10)` fetches only the pages it needs.
 
+Pass `day:`, a `Date` or a `"YYYY-MM-DD"` string, to list only one UTC day's exports:
+
+```ruby
+client.proxies.each_export(day: Date.new(2026, 11, 17)) do |export|
+  puts "#{export.id} #{export.row_count}"
+end
+```
+
 On the first page, the newest hourly export has the ID `"latest"`, a moving alias for the freshest export. Its `date` and `hour` give its stable ID, such as `"2026-10-14/21"`.
 
 ## Downloads
 
-Exports are Parquet files. `download` yields a file's bytes in chunks as they arrive:
+Feed exports are Parquet files. `download` yields a file's bytes in chunks as they arrive:
 
 ```ruby
 File.open("proxies.parquet", "wb") do |file|
@@ -250,10 +261,20 @@ File.open("proxies.parquet", "wb") do |file|
 end
 ```
 
-- Name an export by its `id` from a listing, by `"latest"`, or by a `Date` or `Time` for a UTC day or hour.
+Datasets offer more formats. This downloads the newest geolocation database as a MaxMind DB:
+
+```ruby
+File.open("geolocation.mmdb", "wb") do |file|
+  client.geolocation.download("latest", format: Synthient::ExportFormat::MMDB) { |chunk| file.write(chunk) }
+end
+```
+
+- Name an export by its `id` from a listing, by `"latest"`, or by a `Date` or `Time` for a UTC day or hour. Datasets have no hourly exports.
 - `export_meta` returns the file's SHA-256 `checksum`. Use a fixed ID for both calls, because `"latest"` can move between them.
 - `download_url` returns a presigned URL that works without a key for 24 hours, so treat it as a secret. Your API key is never sent to the storage host.
 - Hourly exports roll into the daily export shortly after 00:30 UTC the next day. After that, a request for the hour raises a 400.
+- `proxies` and `anonymizers` also publish lite exports, deduplicated to the latest row per address or range and provider. Pass `variant: Synthient::ExportVariant::LITE` to `list_exports` to list them. A lite export has the same ID as the full one, so pass `variant:` again to `export_meta`, `download_url`, and `download`.
+- Files come back exactly as served: a `csv` download is a `.csv.gz` file, and a WHOIS download is a `.tar.gz` archive of Parquet files.
 
 ## Retries
 
@@ -336,7 +357,7 @@ end
 | 402    | The team is out of lookup credits                                                                |
 | 403    | The key lacks the scope for the endpoint or feed                                                 |
 | 404    | The export doesn't exist, or a daily export is still rolling up (`retry_after` is set)           |
-| 422    | The input is invalid, such as a private address or a malformed domain                            |
+| 422    | The input is invalid, such as a private address                                                  |
 | 429    | Rate limited if `retry_after` is set; otherwise the budget is spent or too many streams are open |
 | 5xx    | The server failed                                                                                |
 

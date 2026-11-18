@@ -6,12 +6,23 @@ class FeedTest < SynthientTest
   META = {
     "id" => "2026-05-07", "stream" => "proxies", "kind" => "daily", "format" => "parquet", "date" => 1_778_112_000,
     "rows" => 1200, "size" => 1_048_576, "checksum" => "ab12", "created_at" => 1_778_187_600,
-    "schema" => { "fields" => [{ "name" => "ip", "type" => "string" }, { "name" => "asn", "type" => "uint32" }] }
+    "schema" => { "fields" => [{ "name" => "ip", "type" => "string" }, { "name" => "asn", "type" => "uint32" }] },
+    "formats" => [{ "format" => "parquet", "size_bytes" => 1_048_576, "checksum" => "ab12" }]
   }.freeze
 
   FEEDS = {
     proxies: "proxies", anonymizers: "anonymizers", torrents: "torrents", ja4t: "ja4t",
-    helios_http: "helio/http", helios_https: "helio/https", helios_dns: "helio/dns", helios_adb: "helio/adb"
+    helios_http: "helios/http", helios_https: "helios/https", helios_dns: "helios/dns", helios_adb: "helios/adb"
+  }.freeze
+
+  VOLUME = {
+    "stream" => "proxies",
+    "days" => [
+      { "date" => "2026-11-16", "kind" => "daily", "snapshots" => 1, "row_count" => 1_440_452_210,
+        "size_bytes" => 19_629_681_638 },
+      { "date" => "2026-11-17", "kind" => "hourly", "snapshots" => 3, "row_count" => 64_417_250,
+        "size_bytes" => 880_000_000 }
+    ]
   }.freeze
 
   def page(exports, next_cursor = nil)
@@ -51,13 +62,16 @@ class FeedTest < SynthientTest
     assert_empty server.requests
   end
 
-  def test_meta_routes_for_every_feed
-    server = serve { json(200, META) }
+  def test_routes_for_every_feed
+    server = serve { |request| request.path.include?("/daily") ? json(200, VOLUME) : json(200, META) }
     client = new_client(server)
     FEEDS.each do |feed, path|
       client.public_send(feed).export_meta("2026-05-03/7")
 
       assert_equal "/api/v4/feeds/#{path}/export/2026-05-03/7/meta", server.paths.last
+      client.public_send(feed).export_volume
+
+      assert_equal "/api/v4/feeds/#{path}/export/daily", server.paths.last
     end
   end
 
@@ -83,6 +97,9 @@ class FeedTest < SynthientTest
     assert_equal 21, hourly.hour
     assert_nil daily.hour
     assert_equal Time.at(1_778_187_600, in: "UTC"), hourly.created_at
+    assert_equal [Synthient::ExportFormat::PARQUET], hourly.formats.map(&:format)
+    assert_nil hourly.entities
+    assert_nil hourly.variant
   end
 
   def test_list_exports_validates_arguments
@@ -91,9 +108,139 @@ class FeedTest < SynthientTest
 
     [0, -1, 2.0, "2"].each { |limit| assert_raises(ArgumentError) { client.proxies.list_exports(limit:) } }
     assert_raises(TypeError) { client.proxies.list_exports(cursor: 5) }
+    ["", "latest", "2026-5-7", "2026-02-30", "2026-05-07/7", " 2026-05-07"].each do |day|
+      assert_raises(ArgumentError, day) { client.proxies.list_exports(day:) }
+    end
+    [20_260_507, Time.utc(2026, 5, 7), DateTime.new(2026, 5, 7)].each do |day|
+      assert_raises(TypeError, day.inspect) { client.proxies.list_exports(day:) }
+    end
+    assert_raises(TypeError) { client.proxies.list_exports(variant: :lite) }
     client.proxies.list_exports(cursor: "")
 
     assert_equal ["/api/v4/feeds/proxies/export"], server.paths
+  end
+
+  def test_list_exports_day_and_variant
+    server = serve { page([EXPORT.merge("variant" => "lite")]) }
+    client = new_client(server)
+    result = client.proxies.list_exports(limit: 5, day: "2026-05-07", variant: Synthient::ExportVariant::LITE)
+    client.proxies.list_exports(day: Date.new(2026, 5, 7))
+
+    assert_equal ["/api/v4/feeds/proxies/export?day=2026-05-07&limit=5&variant=lite",
+                  "/api/v4/feeds/proxies/export?day=2026-05-07"], server.paths
+    assert_equal Synthient::ExportVariant::LITE, result.exports.first.variant
+  end
+
+  def test_each_export_keeps_day_and_variant
+    server = serve { |request| request.path.include?("cursor") ? page([EXPORT]) : page([EXPORT], "c1") }
+    new_client(server).proxies.each_export(day: "2026-05-07", variant: "lite").to_a
+
+    assert_equal ["/api/v4/feeds/proxies/export?day=2026-05-07&variant=lite",
+                  "/api/v4/feeds/proxies/export?cursor=c1&day=2026-05-07&variant=lite"], server.paths
+  end
+
+  def test_variant_on_meta_and_download_url
+    server = serve do |request|
+      request.path.include?("/meta") ? json(200, META.merge("variant" => "lite")) : [307, { "location" => "/file" }, ""]
+    end
+    client = new_client(server)
+    %w[2026-05-07 2026-05-07/7].each do |export|
+      assert_equal "lite", client.proxies.export_meta(export, variant: "lite").variant
+      client.proxies.download_url(export, variant: "lite")
+    end
+    client.proxies.export_meta("latest", variant: "")
+
+    assert_equal ["/api/v4/feeds/proxies/export/2026-05-07/meta?variant=lite",
+                  "/api/v4/feeds/proxies/export/2026-05-07?variant=lite",
+                  "/api/v4/feeds/proxies/export/2026-05-07/7/meta?variant=lite",
+                  "/api/v4/feeds/proxies/export/2026-05-07/7?variant=lite",
+                  "/api/v4/feeds/proxies/export/latest/meta"], server.paths
+    assert_raises(TypeError) { client.proxies.export_meta("latest", variant: :lite) }
+  end
+
+  def test_missing_lite_export_raises_api_error
+    server = serve { problem(404, { "detail" => "No snapshot found for the requested date" }) }
+    error = assert_raises(Synthient::APIError) { new_client(server).proxies.export_meta("latest", variant: "lite") }
+
+    assert_equal 404, error.status
+    assert_equal 1, server.requests.size
+  end
+
+  def test_export_volume
+    server = serve { json(200, VOLUME) }
+    client = new_client(server)
+    volume = client.proxies.export_volume(days: 7)
+    client.proxies.export_volume
+
+    assert_equal ["/api/v4/feeds/proxies/export/daily?days=7", "/api/v4/feeds/proxies/export/daily"], server.paths
+    assert_equal "proxies", volume.stream
+    daily, hourly = volume.days
+
+    assert_equal Date.new(2026, 11, 16), daily.date
+    assert_equal Synthient::ExportKind::DAILY, daily.kind
+    assert_equal 19_629_681_638, daily.size_bytes
+    assert_equal 1_440_452_210, daily.row_count
+    assert_equal Synthient::ExportKind::HOURLY, hourly.kind
+    assert_equal 3, hourly.snapshots
+  end
+
+  def test_export_volume_validates_days
+    server = serve { json(200, VOLUME) }
+    client = new_client(server)
+
+    [0, -1, 1.5, "7"].each { |days| assert_raises(ArgumentError) { client.proxies.export_volume(days:) } }
+    assert_empty server.requests
+  end
+
+  def test_export_formats_and_entities
+    whois = META.merge(
+      "stream" => "whois", "format" => "tar.gz", "schema" => { "fields" => [] },
+      "formats" => [{ "format" => "tar.gz", "size_bytes" => 997_234_948, "checksum" => "add0" }],
+      "entities" => [
+        { "entity" => "asns", "row_count" => 123_778, "size_bytes" => 5_442_736, "checksum" => "062f",
+          "schema" => { "fields" => [{ "name" => "asn", "type" => "int64" }, { "name" => "updated", "type" => "timestamp" }] } },
+        { "entity" => "contacts", "row_count" => 6_459_660, "size_bytes" => 205_447_373, "checksum" => "cf61",
+          "schema" => { "fields" => [{ "name" => "emails", "type" => "list<string>" }] } },
+        { "entity" => "registrars", "row_count" => 1, "size_bytes" => 1, "checksum" => "00" }
+      ]
+    )
+    server = serve { json(200, whois) }
+    meta = new_client(server).proxies.export_meta("latest")
+
+    assert_equal Synthient::ExportFormat::TAR_GZ, meta.format
+    assert_equal [Synthient::ExportFormat::TAR_GZ], meta.formats.map(&:format)
+    assert_equal 997_234_948, meta.formats.first.size_bytes
+    assert_empty meta.schema.fields
+    assert_equal [Synthient::WhoisEntity::ASNS, Synthient::WhoisEntity::CONTACTS, "registrars"], meta.entities.map(&:entity)
+    assert_equal %w[int64 timestamp], meta.entities.first.schema.fields.map(&:type)
+    assert_equal "list<string>", meta.entities[1].schema.fields.first.type
+    assert_nil meta.entities.last.schema
+    assert_nil meta.variant
+  end
+
+  def test_schema_fields_null_or_missing
+    [{ "fields" => nil }, {}].each do |schema|
+      server = serve { json(200, META.merge("schema" => schema)) }
+      fields = new_client(server).proxies.export_meta("latest").schema.fields
+
+      assert_empty fields, schema.inspect
+      assert_predicate fields, :frozen?
+    end
+  end
+
+  def test_live_column_types
+    types = %w[double int32 date float timestamp list<string>]
+    fields = types.map { |type| { "name" => type, "type" => type } }
+    server = serve { json(200, META.merge("schema" => { "fields" => fields })) }
+
+    assert_equal types, new_client(server).proxies.export_meta("latest").schema.fields.map(&:type)
+  end
+
+  def test_exports_require_formats
+    server = serve { page([EXPORT.except("formats")]) }
+    error = assert_raises(Synthient::DecodeError) { new_client(server).proxies.list_exports }
+
+    assert_equal "ExportPage.feeds[0].formats is required", error.message
   end
 
   def test_each_export_follows_cursors_through_empty_pages
