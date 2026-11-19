@@ -8,7 +8,7 @@ gem "bundler-audit", "~> 0.9"
 gem "minitest", "~> 6.0"
 gem "rake", "~> 13.4"
 gem "rbs", "~> 4.2"
-gem "rubocop", "~> 1.91"
+gem "rubocop", "~> 1.92"
 gem "rubocop-minitest", "~> 0.40"
 gem "steep", "~> 2.1"
 
