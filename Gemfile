@@ -5,7 +5,7 @@ source "https://rubygems.org"
 gemspec
 
 gem "bundler-audit", "~> 0.9"
-gem "minitest", "~> 6.0"
+gem "minitest", "~> 6.1"
 gem "rake", "~> 13.4"
 gem "rbs", "~> 4.2"
 gem "rubocop", "~> 1.91"
