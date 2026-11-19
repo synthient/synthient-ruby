@@ -14,5 +14,5 @@ gem "steep", "~> 2.1"
 
 group :grpc, optional: true do
   gem "google-protobuf", "~> 4.36"
-  gem "grpc", "~> 1.84"
+  gem "grpc", "~> 1.85"
 end
