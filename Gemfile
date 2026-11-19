@@ -9,7 +9,7 @@ gem "minitest", "~> 6.0"
 gem "rake", "~> 13.4"
 gem "rbs", "~> 4.2"
 gem "rubocop", "~> 1.91"
-gem "rubocop-minitest", "~> 0.40"
+gem "rubocop-minitest", "~> 0.41"
 gem "steep", "~> 2.1"
 
 group :grpc, optional: true do
